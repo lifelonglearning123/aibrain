@@ -1,0 +1,1638 @@
+I just automated my entire social media,
+0:02
+every platform with Claw Fable 5. And in
+0:04
+this video, I'm going to show you how to
+0:06
+build it step by step, and I'm going to
+0:08
+give you all of the resources completely
+0:09
+free. Now, once you set this system up,
+0:11
+it will do everything for you. It
+0:13
+researches what's working in your niche,
+0:15
+creates the images and the videos,
+0:16
+writes the post, and publishes to all
+0:18
+nine platforms at once or on a schedule
+0:21
+in your brand voice. No code, no
+0:24
+experience needed at all. Just follow me
+0:25
+along. Let's jump right in. All right.
+Install Claude Desktop
+0:27
+So, we're going to be building
+0:28
+everything inside our Cloud Code, inside
+0:30
+the desktop app. So, the first thing we
+0:32
+need to do is if you don't have a
+0:33
+desktop app for Claude or Claude Code,
+0:35
+go ahead and download that. All you have
+0:36
+to do is head over to claude.com/d
+0:39
+download. Now, after you download the
+0:40
+desktop app, you open it. It's going to
+0:42
+look something like this. Obviously,
+0:43
+mine's uh has a ton of different recent
+0:46
+interactions. Yours might look blank,
+0:48
+but you'll have access to chat, cloud
+0:51
+co-work, and cloud code. Now, uh, make
+0:54
+sure you have the pro plan or some kind
+0:56
+of a paid plan. I'm on the max plan, but
+0:58
+you don't have to use the max plan cuz
+0:59
+it's pretty expensive. But make sure you
+1:00
+have the pro plan cuz otherwise you
+1:02
+won't be able to have access to clot
+1:03
+code here. So, once you have your uh
+1:05
+account set up and everything is good to
+1:07
+go, then click on clot code here. And
+1:09
+now you can click on a new session. So,
+1:11
+I'm just going to get rid of this so
+1:12
+that way you can see this clearly. So,
+1:14
+that you can see this is our brand new
+1:16
+cla code session. Now, the next step is
+Download The Free Resources
+1:18
+setting up your brand voice. Now, let me
+1:20
+show you how to do this first and then
+1:21
+I'm going to talk about why brand voice
+1:23
+is such an important thing as far as
+1:25
+automating your social media. So, just
+1:28
+follow me along here. So, click on a
+1:29
+link in the description. This is a free
+1:31
+school community. It's completely free.
+1:33
+It's called AI workshop light. Once you
+1:35
+come to this community, click on
+1:37
+classroom section. Again, you're going
+1:39
+to click on the link in the description.
+1:41
+Join. Again, it's free. You're going to
+1:43
+come to the classroom section. You're
+1:44
+going to go to YouTube resources. And
+1:46
+inside the YouTube resources, you have
+1:48
+these different folders. Again, these
+1:50
+are all different assets that I've given
+1:51
+people for free. You're going to click
+1:52
+on the claw code one. So, I have a ton
+1:54
+of builds here, but you're going to
+1:56
+scroll down to the bottom and you're
+1:57
+going to click on social media
+1:58
+automation fable 5. So, once you're
+2:00
+here, I've given you guys three
+2:01
+different files to download. The first
+2:03
+one is a social uh media automation
+2:05
+prompt pack that we're going to take a
+2:07
+look at this in a little bit. That's a
+2:08
+PDF file. The second one is a brand
+2:10
+voice template, a PDF file again. And
+2:12
+the third one is a brand voice
+2:14
+template.md file. This is the most
+2:16
+important one. Okay, so just go ahead
+2:18
+and download all three. Now, one quick
+Build Your Brand Voice File
+2:20
+note is you might be wondering, well,
+2:22
+why do you need a brand voice, right?
+2:24
+And this is kind of like a good
+2:25
+overview. So, feel free to look at this
+2:27
+into details. You'll have access to
+2:28
+this, of course. Now, a brand voice is
+2:31
+essentially something that lets Claude
+2:33
+know who you are, right? So, let's say
+2:35
+your name is Alex. You roast coffee in a
+2:37
+small batch in Austin and you ship it
+2:39
+nationwide, right? Every for everyone is
+2:41
+going to be different. Your audience,
+2:43
+right? the offers and calls to action
+2:45
+that you have, the voice rules, the
+2:47
+phrases, the stories, the proof you can
+2:49
+claim, and everything else. The great
+2:51
+thing is once you upload this file into
+2:53
+Claude Code, which I'm going to show you
+2:54
+in a little bit, Claude will actually
+2:56
+interview you. So that way you don't
+2:57
+have to write anything down. That's how
+2:59
+I simple I've made this for you guys,
+3:01
+right? So once you download this, right,
+3:03
+this brand voice template MD file,
+3:05
+you're going to go back to your Claude
+3:06
+app and in the bottom you're going to
+3:08
+click on the plus button here. You're
+3:09
+going to click on add files and just
+3:12
+attach that brand voice template. Okay.
+3:15
+You're going to click on open. Now you
+3:16
+have that uh markdown file attached
+3:20
+inside your claude code. Okay. So now
+3:22
+the next step is giving claude a prompt
+3:25
+so that way it understands and build
+3:26
+your voice or your brand voice. Right?
+3:29
+So what you need to do is again same
+3:31
+thing head over to the community or if
+3:33
+you have downloaded the uh these files
+3:35
+you can just click on this uh social
+3:38
+autopilot prompt back. Now what you need
+3:40
+to do you're just going to come here and
+3:42
+copy this first one. So you're going to
+3:44
+just copy this
+3:46
+and copy it. Go back to my clot code and
+3:48
+paste this. So what this is doing is
+3:50
+saying I've attached my brand voice
+3:52
+template right interview me to fill it
+3:54
+in. Ask one question at a time and push
+3:56
+back when my answers are vague or
+3:58
+generic. Right. So that's exactly what
+3:59
+we're doing. We're telling Claude to
+4:01
+interview us so that way he can create a
+4:04
+personal brand voice for our own use
+4:06
+case. And again, for everybody, this is
+4:08
+going to be different. So if you are
+4:09
+somebody who's using this for personal
+4:11
+use or if somebody if you're a business
+4:12
+owner, this is going to be different for
+4:14
+everybody. So I'm going to press enter.
+4:16
+And as soon as you do this, and by the
+4:17
+way, make sure you're on Fable 5. I
+4:19
+should have mentioned that, right?
+4:20
+Because otherwise, uh, you know, you're
+4:22
+not going to get the best results here.
+4:25
+And I've put the effort on extra. Uh but
+4:28
+I think that's like a good little hybrid
+4:30
+approach but you can keep it at high as
+4:32
+well. So afterwards what this is going
+4:34
+to do is now it says I've read the
+4:35
+templates nice structural our interview
+4:37
+section by section one question at a
+4:39
+time and that's exactly what's happening
+4:41
+right. So it's saying which one sentence
+4:43
+identify identity is closest to how you
+4:45
+would say it. This is going to actually
+4:47
+start to now generate all of these with
+4:50
+with asking you all of these question is
+4:52
+going to generate your own personal
+4:54
+brand voice. So for instance, for me,
+4:56
+it's saying build, show, and sell. So
+4:57
+these are obviously the the options that
+4:59
+you have, or you can type something
+5:00
+yourself if you don't like any of this.
+5:02
+So I'm just going to select this one
+5:03
+just to kind of give you guys an idea.
+5:04
+So once you do this, now it's going to
+5:06
+move on to the next step. And so on and
+5:08
+so forth. And afterwards, it's going to
+5:10
+generate you a nice little template or a
+5:13
+voice or a brand voice. So that way you
+5:14
+can do this. And by the way, you only
+5:15
+have to do this once, right? And you
+5:17
+want to do this the right way. So go
+5:18
+ahead and answer uh your all these
+5:21
+questions and at the end you can
+5:23
+download that MD file or if let's say
+5:26
+Claude doesn't give you that file just
+5:27
+say hey can you create a PDF for me and
+5:31
+put it in my downloads folder or desktop
+5:33
+folder or something like that and it'll
+5:34
+do it. I already have my brand voice so
+5:36
+all I have to do is just retrieve it. So
+Jarvis Second Brain Demo
+5:38
+I'm just going to head over to my uh
+5:40
+brain here. So this is basically my
+5:42
+entire business and my operating system
+5:44
+visually for me in 3D. And I also have
+5:47
+access to Jarvis, who's my personal AI
+5:49
+assistant. So, I'm just going to quickly
+5:51
+retrieve mine.
+5:52
+Handsfree engaged, sir. Say, Jarvis, and
+5:54
+I shall answer.
+5:55
+Hey, Jarvis, can you pull up my brand
+5:58
+voice for my social media, please?
+6:03
+I've pulled up all the information, sir.
+6:05
+You can read it yourself or if you'd
+6:06
+like, say, read it out loud.
+6:08
+That's fine. Thank you, Jarvis. I got
+6:10
+it.
+6:10
+Very good, sir. I shall be here quietly
+6:12
+judging your hook lengths.
+6:15
+Okay. So, Jarvis basically pulls up my
+6:17
+information here. So, as you can see,
+6:18
+this is my social media platform that's
+6:20
+connected to my community, my claude
+6:22
+code, the different tools that I use.
+6:24
+So, for instance, if I click on zoom
+6:26
+into my brand voice here, I can just
+6:28
+copy this right here. So, I'm just going
+6:29
+to copy that. There you go. So, this is
+6:31
+my brand voice. I'm going to copy this
+6:32
+and paste it on my cloud code. By the
+6:34
+way, if you're interested in building
+6:36
+your own operating system like this with
+6:38
+your own Jarvis, check out the link in
+6:40
+the des description. It's going to be my
+6:42
+community that you'll have access to.
+6:44
+Again, this is a paid community because
+6:46
+Jarvis and this operating system was
+6:48
+very expensive for me to build. So,
+6:50
+that's why I charge a subscription, but
+6:52
+it's well worth it. You can just create
+6:53
+something like this. Jarvis, can you
+6:55
+quickly introduce yourself to my YouTube
+6:57
+audience?
+6:59
+Good day to you all. I'm Jarvis Zubar's
+7:01
+drywitted secondrain and long-suffering
+7:04
+butler/operating system. I keep his
+7:06
+notes tidy, his hooks money first, and
+7:08
+his ambitions on schedule. He built me
+7:10
+with Claude code which means I'm both
+7:12
+the tool and the demo. Do try to keep
+7:15
+up. Delighted to be of service and
+7:17
+welcome to the channel. Thanks Jarvis.
+7:20
+That was very nice. By the way, what's
+7:22
+your humor setting at? Because I feel
+7:24
+like you're being too funny.
+7:26
+Currently at 75%, sir. Comfortably above
+7:29
+your apparent tolerance this evening.
+7:30
+Say the word and I'll dial it down.
+7:33
+Yeah, let's uh bring that down to 65%,
+7:36
+shall we?
+7:41
+Noted, sir. Dialed to 65% which is
+7:44
+precisely enough to be amusing and not
+7:46
+so much that I forget to be useful.
+7:49
+All right, so that's Jarvis for you. By
+7:51
+the way, again, this is probably one of
+7:52
+the fun the most fun projects I've ever
+7:54
+built. If you guys have seen
+7:56
+Interstellar, that humor dial that Tar
+7:58
+had. So, that's exactly what I
+8:00
+implemented in Jarvis here. And it's
+8:02
+been absolutely amazing to uh deal with
+8:06
+Jarvis. Anyways, like I said, if you're
+8:07
+interested in building something uh of
+8:09
+this your own, all you have to do is
+8:10
+just copy a few files. It's inside my uh
+8:13
+community. Like I said, this one's a
+8:15
+paid community. So, it's inside my AI
+8:17
+workshop paid community inside the
+8:18
+classroom section. You can just download
+8:20
+a bunch of files. This is the version 4.
+8:22
+I'm I keep updating this and adding more
+8:24
+functionalities. I'm going to put a link
+8:26
+in the description of a video. If you
+8:28
+guys want a full demo, feel free to
+8:29
+check that out. But anyways, so let's
+8:31
+get back to our tutorial here. So again,
+Finalize The Brand Voice File
+8:33
+I'm just going to cross this out for now
+8:35
+and open a new cloud code session
+8:37
+because I don't need to uh go through
+8:39
+that questionnaire. It's going to take
+8:40
+time. But again, make sure you go
+8:42
+through the questionnaire so that way
+8:43
+you generate your brand voice. So I'm
+8:45
+just going to paste that here.
+8:50
+Okay. So I'm just going to paste my
+8:52
+brand voice here instead of attaching it
+8:54
+because like I said, mine's already in
+8:56
+my system, but yours is going to be
+8:57
+looking like a file. So there you go. I
+8:59
+just pasted mine. The reason why I
+9:00
+wanted to do this so that way I can show
+9:01
+you exactly what this would look like.
+9:03
+So it says the text you pasted already
+9:04
+lives word for word in a wiki. And again
+9:06
+that was that visual operating system
+9:09
+you saw. But it gives you this brand
+9:10
+voice.md file which is going to look
+9:12
+something like this for you. Okay. So
+9:14
+after that once you have that then
+9:16
+you're going to go ahead and attach that
+9:18
+file right to your cloud code session
+9:20
+just like I showed you earlier. You're
+9:22
+going to head over to the school
+9:24
+community or this file here. You're
+9:27
+going to come to the social media
+9:28
+autopilot promp prompt packed. And now
+9:30
+you're going to copy the second one,
+9:31
+right? It's going to say read my brand
+9:33
+voice.md file because this time it
+9:36
+already has your brand voice. And then
+9:37
+it's going to interview you with three
+9:39
+questions and then you're completely
+9:40
+done with that. So after you're done
+9:42
+with that, now you have your brand voice
+9:44
+set up and good to go. So now the next
+Connect Higgsfield MCP
+9:46
+step is installing two MCP tools. So
+9:49
+that way we can take care of the image
+9:51
+and uh video creation and then also
+9:54
+posting it in all social media platform.
+9:57
+So the first one is going to be taking
+9:58
+care of uh posting like images you know
+10:02
+like carousels for instance. So one of
+10:03
+the most popular uh posts that get a lot
+10:06
+of engagement on Instagram, on uh
+10:09
+Twitter, on LinkedIn, even on YouTube is
+10:12
+these carousels, which is basically a
+10:14
+combination of multiple images that
+10:16
+people kind of like scroll through. And
+10:18
+the reason why this is so important is
+10:20
+because this gives the platform
+10:22
+indication that people are actually
+10:24
+engaging with your content. So that's
+10:26
+why carousel is one of the most popular
+10:28
+uh posts out there in the market right
+10:30
+now. So we can take this as an example
+10:31
+but I'm going to also show you how you
+10:33
+can generate uh uh videos as well like
+10:36
+shorts all completely from your clot
+10:38
+code. So in order to do this we need
+10:40
+access to powerful AI models right like
+10:44
+nanobanana 2 or nanobanana pro GPT image
+10:48
+to seance for image creation and then
+10:50
+for video creation things like uh VO3.1
+10:54
+and um uh Cance 2.0 you know, 4K or
+10:58
+cling, right? These are all popular
+11:00
+models. And and and instead of doing
+11:02
+this manually, what we're going to do is
+11:04
+just basically attach our Hicksfield MCP
+11:07
+tool. So that way we can just let Claude
+11:09
+do the work all from inside our Claude
+11:12
+code session. And again, once we set
+11:14
+this up, and I'm going to show you in a
+11:15
+little bit how you can schedule these
+11:16
+posts, then we're going to be completely
+11:18
+on autopilot. Now, I know a lot of
+11:20
+people have uh some reservations about
+11:23
+Hicksfield because it is a little
+11:24
+expensive, but honestly, this is the
+11:26
+price of automation. If you want
+11:28
+complete automation, you got to pay for
+11:30
+tools like this because otherwise you
+11:31
+would have to do all of these steps
+11:33
+manually. But again, totally up to you
+11:35
+guys. So, let me show you how you can
+11:36
+attach your hex field MCP to your cloud
+11:39
+code now. So, what you need to do is
+11:41
+first of all, click on the link in the
+11:42
+description. It's going to bring you to
+11:43
+this um link right here and uh set up an
+11:47
+account, right? because you obviously
+11:48
+need an account. And after you're here,
+11:50
+so now let's go ahead cuz we need to
+11:52
+copy this URL right here. So what we
+11:53
+need to do is head back to our cloud
+11:55
+code here. Click on the plus button
+11:57
+here. You're going to click on the
+11:58
+connectors. You're going to click on
+11:59
+manage connectors. And here we're going
+12:02
+to on top right here, click on the plus
+12:04
+button and add a custom connector. And
+12:07
+this is where we need to add our
+12:08
+Hicksfield uh MCP here. So I'm going to
+12:10
+go ahead and name this. So I'm just say
+12:12
+Hicksfield. And again, make sure you've
+12:15
+already created an account and you're
+12:16
+logged into your Hicksfield cuz
+12:18
+otherwise it's not going to it's going
+12:20
+to direct you uh to a different path. So
+12:22
+once you do that, you're going to come
+12:24
+back to this page. You're going to click
+12:26
+on copy. You're going to head back to
+12:28
+your cloud code. You're going to paste
+12:31
+that URL right here. And now you're
+12:33
+going to click on add. So once you add
+12:35
+this, this is going to show up right
+12:36
+here. The Hickfield logo is going to
+12:38
+show up. You're not connected to
+12:39
+Hicksfield yet. So therefore, you're
+12:41
+going to click on connect here. Once you
+12:43
+connect here, this is going to
+12:44
+automatically open an authorization
+12:46
+window where it's going to ask you that
+12:48
+Claude needs to access your Hicksfield.
+12:50
+So you're going to click on allow and
+12:52
+this is going to authenticate. Right?
+12:55
+There you go. So now it's going to say
+12:56
+open Claude. And now Hicksfield is
+12:58
+connected. So it says connected to
+13:00
+Hickfield, right? Perfect. There you go.
+13:02
+Now we're all set to go. Okay. So uh all
+13:05
+of these permissions just leave it as
+13:07
+default for now. So that was MCP number
+13:10
+one, right? So now if I go back to my
+13:13
+clot code and again I'm going to show
+13:16
+you how to use this in a little bit. So
+13:18
+connectors and now our hickfield is
+13:21
+attached. So for those of you who are
+13:22
+new to Hicksfield, basically Hicksfield
+13:24
+is like a one-stop shop for creating
+13:26
+images and videos and everything else,
+13:28
+right? They have access to the most
+13:30
+popular uh video tools all in one kind
+13:32
+of location. So that's why and then also
+13:35
+one of the most important things is that
+13:37
+we're also going to utilize this
+13:38
+marketing studio which basically has all
+13:41
+of these different uh features and
+13:43
+templates that going to be very useful
+13:45
+especially if you're creating like
+13:46
+videos or like shorts or stuff like that
+13:49
+like UGC ads like whatever niche you're
+13:51
+in this is going to come to an
+13:53
+importance here. Okay so that's why
+13:55
+we're using this. So once we have our
+13:57
+our hicksfield connected right so let me
+14:00
+just make sure it's connected now that's
+14:02
+good to go. Now the next step is uh
+Connect Blotato MCP
+14:05
+connecting a tool that will
+14:07
+automatically post everything for you in
+14:09
+all different platforms. Now for that
+14:12
+one we're going to be using Blowado.
+14:14
+Again this is something that will give
+14:16
+you a free trial. I'm not sponsored by
+14:19
+BlowT or anything like that. So feel
+14:21
+free to use whatever platform you want,
+14:23
+but I'm just using this is because I've
+14:24
+used this before and I personally use
+14:26
+this as well. So go ahead and create a
+14:29
+um new account. They give you a free
+14:31
+trial. So, uh, check it out. Uh, and if
+14:33
+you don't like it, you can always, uh,
+14:35
+cancel it. So, once you create your free
+14:37
+account, you're going to head over in
+14:39
+the in the left hand side. It's going to
+14:40
+look something like this. You're going
+14:41
+to head over to the settings. You're
+14:43
+going to click on settings. It's going
+14:44
+to bring you up in these accounts page.
+14:46
+And these are all of the different
+14:47
+social medias. Like I mentioned, all
+14:49
+nine platforms that you have access to.
+14:51
+I've already connected my Instagram and
+14:53
+my LinkedIn. But let's say I want to add
+14:55
+my Twitter, right? So, I have my Twitter
+14:57
+right here, right? So this was the last
+14:59
+post that I created for my Jarvis. So
+15:01
+let me go ahead and show you how to
+15:03
+connect that. And the process is the
+15:04
+same for everything. All you need to do
+15:06
+is just click click on login for each
+15:08
+account that you want to sign up. So
+15:09
+let's say uh I want to login with my
+15:12
+Twitter or connect my Twitter account.
+15:13
+So I'm going to click on login with
+15:14
+Twitter. Now same thing. This is going
+15:16
+to open up another page that's just
+15:18
+going to have you authorize this. So I'm
+15:20
+just going to click on authorize app.
+15:23
+Now it's going to redirect me back. And
+15:24
+perfect. If I go to the bottom now,
+15:27
+uh let's see. There you go. Right. So,
+15:29
+it says uh
+15:33
+connected accounts. This is one of the
+15:35
+pages that just got connected. Okay. So,
+15:38
+that's how simple it is. And same thing
+15:39
+like you can loging in with with your
+15:41
+len LinkedIn. It's going to have you
+15:43
+sign in and you authorize it. And that's
+15:46
+pretty much all you need to do. Okay.
+15:47
+Same thing with Facebook or Tik Tok.
+15:50
+Let's say you want to uh attach your Tik
+15:51
+Tok. Same thing. You just say continue
+15:54
+and you authorize Blotto and in the
+15:57
+bottom now your Tik Tok shows up. There
+15:59
+you go. All right. So very very simple
+16:02
+just like that. Okay. So after you log
+16:04
+into your accounts and your accounts are
+16:06
+connected, you're going to head over to
+16:07
+the API right here. And then here we're
+16:10
+not going to copy the API. We're
+16:11
+actually going to just use Claude
+16:13
+desktop or Claude coord app. And it
+16:15
+gives you instructions here. There's a
+16:16
+video here that Sabrina, who owns this
+16:19
+account or this uh platform, shows you
+16:21
+also step by step how to do this, but
+16:23
+it's very simple. You're going to go to
+16:25
+settings, connectors, add a custom
+16:26
+connector, just like we did there,
+16:28
+right? And just going to name it and
+16:29
+copy this uh URL. So, we're going to do
+16:31
+the same thing. We're going to go back,
+16:33
+click on the plus button, connectors.
+16:35
+We're going to do manage connectors, the
+16:37
+plus button, add a custom connector, and
+16:40
+we're going to do blow.
+16:42
+I think that's how you pronounce it. I'm
+16:44
+not sure if you pronounce it the same.
+16:45
+blowout or botto I think something like
+16:47
+that. Okay. So, remote MCP URL. You're
+16:50
+going to go back and just copy this.
+16:52
+Okay.
+16:54
+Copy.
+16:56
+Go back and paste it.
+17:00
+And I'm going to click on add. So, now
+17:02
+this is going to There you go. It says
+17:04
+added, right? Uh Blado is added. You're
+17:06
+not connected to Blata yet. So, I'm just
+17:08
+going to click on connect. And this is
+17:09
+going to same thing authorize me. I'm
+17:11
+just going to click on approve access.
+17:15
+and it's going to say open cloud. And
+17:18
+now I am connected. Okay, very very
+17:21
+simple, very easy to do. And you could
+17:23
+do a lot of different things here, but
+17:25
+we're not going to focus on the other
+17:27
+functionalities. I'm just going to show
+17:28
+you guys how you can automate your
+17:29
+posting. So let's go back here. I want
+17:31
+to make sure everything's connected. So
+Run A Carousel Test
+17:33
+now let's go ahead and walk through an
+17:35
+example to make sure everything is
+17:37
+working. Okay. So I'm going to actually
+17:38
+do something very simple, but I'm going
+17:40
+to show you how you can make this even
+17:41
+more complex. So, I'm just going to say
+17:44
+create a So, I said create a carousel
+17:46
+type of post from my Instagram and
+17:48
+LinkedIn and Twitter, each tailored to
+17:50
+its own platform posting and use my
+17:52
+brand voice. Use the Higsfield MCP to
+17:54
+generate the images and the Blowto MCP
+17:57
+to post it in all three accounts. That's
+17:58
+all you need. Now, if you want to give
+18:00
+it a reference, so let's say we want to
+18:01
+give it a reference based on that
+18:03
+carousel we pulled up, right? So, we can
+18:05
+just take a screenshot or yeah,
+18:07
+screenshot of this. Again, you don't
+18:08
+have to do this. This is just like an
+18:10
+extra step. So I'm just going to take a
+18:11
+screenshot of this. Go back to claude
+18:14
+and just add this. So I said for the
+18:16
+carousel design use the attached image
+18:18
+as a reference. That's very very simple.
+18:20
+So now let's go ahead and test this out.
+18:21
+So I'm going just press enter. So what's
+18:23
+going to happen is now uh cloud code
+18:25
+using cloud fable 5 is going to realize
+18:28
+that okay I have access to the hickfield
+18:30
+mcp right and then also I have access to
+18:33
+blow blow mcp. So, first of all, it's
+18:35
+going to check those two connections to
+18:37
+make sure those two are working. And
+18:38
+then afterward, it's going to do is it's
+18:40
+going to go ahead and create the post
+18:43
+based on our own brand voice. In my
+18:46
+case, it's the AI workshop voice, but uh
+18:48
+I've also given it a reference as well
+18:50
+because I kind of let's say I like this
+18:52
+particular type of carousel. So, it's
+18:54
+going to go ahead and generate those
+18:55
+things based on my brand voice with
+18:58
+these particular attached reference
+19:00
+guides that I've given. Obviously, this
+19:02
+is going to take some time because, of
+19:03
+course, we're having it do everything uh
+19:06
+automatically. So, there you go. Says on
+19:08
+it on it. This is the exact pipeline we
+19:10
+proved out earlier today. So, I'll
+19:11
+follow the playbook first. Let me pull
+19:13
+the pipeline notes and platform rules.
+19:15
+So, the carousel is built, right? Right.
+19:16
+Again, I was testing this earlier. Yours
+19:19
+is going to be the same thing because
+19:20
+you already gave it the brand voice. You
+19:21
+already interacted with clot code. So,
+19:23
+it remembers all of that. Right. So, and
+19:25
+there you go. So, now it's going to ask
+19:26
+me what should the carousel be about,
+19:28
+right? because I didn't give it any
+19:29
+guide as far as what should the post be
+19:31
+about. So therefore, uh if you don't
+19:33
+give it that, it's going to ask you
+19:34
+questions. So I'm just going to say
+19:35
+mission control AI operating system,
+19:37
+right? That's fine. But you can choose
+19:39
+uh whatever option based on whatever
+19:41
+preference you have for your own
+19:42
+business or you can type something uh
+19:44
+yourself and it's going to go ahead and
+19:45
+build that. So let's go ahead and give
+19:47
+this a couple of seconds. Now, while
+Proof The Post Went Live
+19:49
+this is happening, I'm going to show you
+19:50
+guys that I already did this so that way
+19:51
+you can see a proof of it, right? I
+19:53
+actually created two videos. So take a
+19:55
+look at this. And again, all of this was
+19:57
+done through the blot mcp and then also
+20:00
+the cloud code there. So let me show you
+20:02
+guys cuz this is by the way this is a
+20:04
+for my site view. So let me open site
+20:06
+view for you guys so that we can see
+20:07
+what it is. So this is my SAS this is
+20:09
+for uh getting cited by AI tools that
+20:13
+was based on one of the tools I created.
+20:14
+So this is basically an ad for that
+20:17
+right because I was like hey let me see
+20:18
+if I can create something uh practical.
+20:20
+So take a look. Listen to this.
+20:22
+Visible to AI search.
+20:26
+This tool fixes that.
+20:29
+See the AI visibility score pop up. Run
+20:32
+the free. Fix the signals. Your website
+20:35
+is invisible to AI search.
+20:37
+I mean that's very cool. See all of that
+20:40
+was generated all and again it's based
+20:42
+on this site and you can see that
+20:43
+visuals kind of match that. And same
+20:45
+thing, I kind of tested it also to
+20:48
+generate um oops, let me go back here.
+20:52
+Uh this one, which was kind of like a
+20:54
+Claude Fable 5 animation. I said to go
+20:57
+ahead and create that. And it created
+20:58
+this nice little animation. Again, same
+21:00
+thing, the post, everything, um the
+21:03
+images, the video, all of it was done on
+21:05
+Blato. And then same thing, I was like,
+21:07
+"Hey, post this on LinkedIn as well." So
+21:09
+if I go to my LinkedIn, I'll show you. I
+21:10
+did the same exact thing here. There you
+21:13
+go. Same video, right? Same. Oh, it
+21:15
+actually generated and posted this
+21:17
+already. So, let me go ahead and see
+21:19
+this. So, it looks like there you go.
+21:22
+So, this is the brand voice that we
+21:24
+talked about, right? Let me just double
+21:26
+check. Yep. So, it went ahead and
+21:28
+created the images. Look how beautiful
+21:30
+this is. This was done. And it says that
+21:32
+it used Nano Banana Pro 4x5, right? So,
+21:35
+that's what it looks like. And perfect.
+21:39
+That is very cool. So now it already
+21:41
+looks like it posted on my LinkedIn. Now
+21:43
+let's take a look at our LinkedIn here.
+21:46
+So let's pull this up. My ops team cost
+21:50
+pennies a day. It's not outsourcing.
+21:51
+It's an AI OS I built with cloud code.
+21:53
+Look at this. Absolutely incredible. All
+21:55
+tailored to that particular platform. In
+21:58
+this case, it's LinkedIn, right? So it
+22:00
+says six uh images are generated, right?
+22:02
+There you go. I can like click on this.
+22:04
+I can move to it. So let me maximize
+22:07
+this so you can see. There you go. Look
+22:09
+at this. You can build this no CS degree
+22:11
+cloud code. Very cool. So, this is a
+22:14
+very high engaging uh carousel that you
+22:18
+can use, right? So, let's go take a look
+22:20
+at the Instagram to see if posted that
+22:22
+yet. Refresh the page.
+22:25
+And perfect. It posted it here too,
+22:27
+right? Take a look at this. Now, um it's
+22:30
+based on the text is based on the
+22:32
+Instagram. It has an emoji there, right?
+22:34
+And it has all the hashtags and very
+22:38
+nicely done. Look at this. Beautiful.
+22:41
+And all of this is based on uh the
+22:45
+example that we provided it. Right? So
+22:47
+take a look at this. It looks exactly
+22:49
+not exactly like that of course, but it
+22:51
+has the same formatting just with
+22:52
+different colors. Right? So if I click
+22:53
+on this, it looks very similar to this
+22:56
+with these nice little uh bold titles
+22:59
+and also a few images in there as well.
+23:02
+Right? Look at that. Perfect.
+23:05
+Very well done. Now, I just like my own
+23:09
+uh post there. All right, go let's go
+23:10
+back. There you go. So, it says um done.
+Tailor Content For Each Platform
+23:13
+The mission control carousel is live on
+23:15
+all three platforms. Now, why three
+23:17
+platforms is because I only connected,
+23:19
+right? If I go back here, I've only
+23:22
+given this access to three platforms.
+23:24
+So, my Tik Tok, uh sorry, my uh
+23:27
+Instagram, my uh LinkedIn, and my X
+23:30
+account as well. I didn't tell it to
+23:32
+post it. That's based on my brand voice
+23:34
+by the way. Uh I didn't tell it to post
+23:36
+on any other platforms. I just posted it
+23:38
+these three. So that's why it's doing it
+23:40
+to these three. Based on your brand
+23:41
+voice, you can tell it hey post it in
+23:43
+all uh nine platforms. It will do it for
+23:46
+you. As long as your built is connected
+23:48
+to those particular platforms and you
+23:50
+can see in the bottom it just tells you
+23:51
+what went out. Says six slides in the
+23:53
+reference templates layout bold left
+23:55
+line to line right part of the platform
+23:57
+tailoring. IG got the meme energy
+23:59
+caption with exactly five hashtags and
+24:01
+comment and LinkedIn got the 1400
+24:04
+character builder story ending on
+24:05
+business lessons and again it's doing
+24:08
+this based on each platform and based on
+24:10
+the reason why it's doing this that MD
+24:12
+file that I gave you guys that's based
+24:14
+on all of this it's actually gives it
+24:15
+guidance that for each platform do
+24:17
+something different that's tailored to
+24:19
+that platform therefore it gives it that
+24:21
+very nice structured for each platform
+24:24
+template that it uses on your brand
+24:27
+voice Right? So that's why it's
+24:28
+generating the different formats. So for
+24:30
+Instagram, it's going to do kind of like
+24:32
+the meme energy and for LinkedIn, it's
+24:34
+going to have a bit more professional
+24:35
+and it's going to have a longer uh words
+24:38
+there just based on that particular uh
+24:40
+platform's preference. So that's how
+24:43
+powerful this is. And like I mentioned,
+24:45
+uh this is this used the Hicksfield MCP
+24:48
+and the Blato MCP to kind of do
+24:50
+everything all of this together. Now, of
+24:52
+course, same thing, you can now instead
+24:54
+of carousels, you can say generate
+24:55
+videos. Of course, if you create videos,
+24:57
+it's going to cost you more tokens and
+24:58
+more money. So, be aware of that. Images
+25:00
+are always cheaper and these carousels
+25:03
+do really, really well, but you can
+25:05
+check out uh the cost inside your own
+25:08
+Hickfield account there. Now, as far as
+Schedule Weekly Posting Routines
+25:10
+that was kind of like posting right
+25:12
+away. Now, if you want to schedule
+25:13
+things, you can do the same thing. Click
+25:15
+on routines here, and you can actually
+25:17
+set yourself a a calendar that you can
+25:20
+take uh uh select specific timings that
+25:22
+you want to post to. Or if you want to
+25:24
+go do this through the clot code route,
+25:26
+just again go back to your prompt pack
+25:28
+file here. And now you can copy this one
+25:30
+prompt three which is called weekly. It
+25:32
+just says read my brand voice.mmd file.
+25:35
+Ask me three questions but for the week
+25:37
+now, right? So this is how you can
+25:38
+schedule things. So you can use claude
+25:40
+code uh or this routines right here to
+25:44
+uh kind of schedule this automation. is
+25:45
+you just come to routines and you give
+25:47
+it that prompt and then now you will be
+25:49
+able to set this automation up where on
+25:52
+a daily basis let's say at 8:00 a.m. it
+25:54
+can post on different
+25:56
+uh platforms based on whatever
+25:58
+preference you have. Now, if you want to
+26:01
+uh let's say only post to three
+26:03
+platforms, you can do that. And again,
+26:05
+if you want to generate videos, same
+26:07
+thing. You just tell it to generate
+26:09
+videos, shorts, uh long form, what? Not
+26:11
+long form. Actually, most of the time
+26:12
+it's shorts obviously cuz it's
+26:14
+Instagram, Tik Tok, and uh YouTube and
+26:16
+everything like that. That's what this
+26:18
+is good at. But, of course, like I
+26:19
+mentioned, it's going to cost you more
+26:20
+tokens. So, like I said, once you set
+26:22
+this thing up, you're completely done.
+Troubleshooting And Final Setup Tips
+26:24
+And by the way, at any point if you, you
+26:26
+know, something happens, you run into a
+26:28
+mistake, you can always just ask claw.
+26:30
+That's what Fable 5 is really good at is
+26:32
+problem solving. So let's say something
+26:34
+is not working, just say, "Hey, uh,
+26:36
+there's an issue here." Just screenshot
+26:39
+the error or something like that, and it
+26:40
+will actually give you more guidance.
+26:42
+You'll be surprised how amazing it is at
+26:43
+solving problems that you face. So, but
+26:46
+again, if you have just followed all of
+26:48
+this, everything should be good to go
+26:50
+for you. So, hopefully you found this
+26:52
+video helpful. Like I said, all of the
+26:53
+resources are inside the free community.
+26:55
+You can just grab this from here. And if
+26:57
+you're interested in uh grabbing a uh
+27:00
+creating a Jarvis AI assistant type and
+27:02
+a second brain for your entire operating
+27:04
+system, check out the community. We also
+27:06
+have a claude code master class where uh
+27:08
+if you're completely new to claude code
+27:10
+and claude, we teach you everything you
+27:12
+need to know. And if you're interested
+27:13
+in starting your AI agency to build this
+27:15
+uh services for businesses, that's there
+27:18
+as well. Thanks for watching. Make sure
+27:20
+uh if you have any comments or any
+27:22
+questions, put them in the comments
+27:23
+below. Thanks for watching and I'll see
+27:24
+you on the next one.
+

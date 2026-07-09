@@ -1,0 +1,399 @@
+"use client";
+
+import { useState } from "react";
+import { ENTITIES, type EntityKey } from "@/lib/entities";
+
+type SceneStatus = "idle" | "generating" | "ready" | "error";
+
+interface Scene {
+  id: string;
+  source: "ai" | "user";
+  prompt: string;
+  clipUrl: string;
+  jobId?: string;
+  status: SceneStatus;
+  error?: string;
+}
+
+const VIDEO_PLATFORMS = ["instagram", "tiktok", "youtube", "facebook", "x", "linkedin"];
+
+export function VideoComposer({
+  aiConfigured,
+  renderConfigured,
+  ghlBrands,
+  initialEntity,
+  allowedBrands,
+}: {
+  aiConfigured: boolean;
+  renderConfigured: boolean;
+  ghlBrands: EntityKey[];
+  initialEntity: EntityKey;
+  allowedBrands: EntityKey[];
+}) {
+  const [brand, setBrand] = useState<EntityKey>(initialEntity);
+  const brandOptions = ENTITIES.filter((e) => allowedBrands.includes(e.key));
+  const [aspect, setAspect] = useState("9:16");
+  const [scenes, setScenes] = useState<Scene[]>([]);
+
+  // Assembly
+  const [rendering, setRendering] = useState(false);
+  const [renderStatus, setRenderStatus] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const [finalUrl, setFinalUrl] = useState<string | null>(null);
+
+  // Publish
+  const [caption, setCaption] = useState("");
+  const [vidPlatforms, setVidPlatforms] = useState<string[]>(["instagram", "tiktok"]);
+  const [publishing, setPublishing] = useState(false);
+  const [pubResults, setPubResults] = useState<{ platform: string; ok: boolean; error?: string }[]>([]);
+  const [pubError, setPubError] = useState<string | null>(null);
+
+  const publishConfigured = ghlBrands.includes(brand);
+
+  function update(id: string, patch: Partial<Scene>) {
+    setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }
+  function addScene(source: "ai" | "user") {
+    setScenes((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), source, prompt: "", clipUrl: "", status: "idle" },
+    ]);
+  }
+  function remove(id: string) {
+    setScenes((prev) => prev.filter((s) => s.id !== id));
+  }
+  function move(id: string, dir: -1 | 1) {
+    setScenes((prev) => {
+      const i = prev.findIndex((s) => s.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const copy = [...prev];
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+      return copy;
+    });
+  }
+
+  async function pollClip(id: string, jobId: string) {
+    for (let i = 0; i < 75; i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      try {
+        const res = await fetch(`/api/video/clip/status?id=${encodeURIComponent(jobId)}`);
+        const data = await res.json();
+        if (data.url) return update(id, { clipUrl: data.url, status: "ready" });
+        if (data.status === "failed" || data.status === "error") {
+          return update(id, { status: "error", error: data.error ?? "failed" });
+        }
+      } catch {
+        /* keep polling */
+      }
+    }
+    update(id, { status: "error", error: "timeout" });
+  }
+
+  async function generate(scene: Scene) {
+    update(scene.id, { status: "generating", error: undefined });
+    try {
+      const res = await fetch("/api/video/clip", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: scene.prompt, aspect }),
+      });
+      const data = await res.json();
+      if (!data.ok) return update(scene.id, { status: "error", error: data.error ?? "failed" });
+      if (data.url) return update(scene.id, { clipUrl: data.url, status: "ready" });
+      if (data.id) {
+        update(scene.id, { jobId: data.id });
+        pollClip(scene.id, data.id);
+      }
+    } catch {
+      update(scene.id, { status: "error", error: "request_failed" });
+    }
+  }
+
+  async function pollRender(id: string) {
+    for (let i = 0; i < 100; i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      try {
+        const res = await fetch(`/api/video/render/status?id=${encodeURIComponent(id)}`);
+        const data = await res.json();
+        setRenderStatus(data.status ?? null);
+        if (data.url) {
+          setFinalUrl(data.url);
+          setRendering(false);
+          return;
+        }
+        if (data.status === "failed" || data.status === "error") {
+          setRenderError(data.error ?? "render_failed");
+          setRendering(false);
+          return;
+        }
+      } catch {
+        /* keep polling */
+      }
+    }
+    setRenderError("timeout");
+    setRendering(false);
+  }
+
+  async function assemble() {
+    const clips = scenes.filter((s) => s.clipUrl).map((s) => ({ url: s.clipUrl }));
+    if (clips.length === 0) return;
+    setRendering(true);
+    setRenderError(null);
+    setFinalUrl(null);
+    setRenderStatus("queued");
+    try {
+      const res = await fetch("/api/video/render", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clips, aspect }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setRenderError(data.error ?? "render_failed");
+        setRendering(false);
+        return;
+      }
+      pollRender(data.id);
+    } catch {
+      setRenderError("request_failed");
+      setRendering(false);
+    }
+  }
+
+  async function publishVideo() {
+    if (!finalUrl) return;
+    setPublishing(true);
+    setPubError(null);
+    setPubResults([]);
+    try {
+      const res = await fetch("/api/social/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          entity: brand,
+          posts: vidPlatforms.map((p) => ({ platform: p, text: caption })),
+          mediaUrls: [finalUrl],
+        }),
+      });
+      const data = await res.json();
+      if (data.results) setPubResults(data.results);
+      if (!data.ok && data.error) setPubError(data.error);
+    } catch {
+      setPubError("request_failed");
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  const readyCount = scenes.filter((s) => s.clipUrl).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <label className="text-sm font-medium text-slate-700">Brand</label>
+        <select
+          value={brand}
+          onChange={(e) => setBrand(e.target.value as EntityKey)}
+          className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm"
+        >
+          {brandOptions.map((e) => (
+            <option key={e.key} value={e.key}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+        <label className="ml-2 text-sm font-medium text-slate-700">Aspect</label>
+        <select
+          value={aspect}
+          onChange={(e) => setAspect(e.target.value)}
+          className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm"
+        >
+          <option value="9:16">9:16 (shorts)</option>
+          <option value="1:1">1:1</option>
+          <option value="16:9">16:9</option>
+        </select>
+      </div>
+
+      {/* Scenes */}
+      {scenes.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">
+          Build your video from scenes — mix your own clips with AI-generated ones.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {scenes.map((s, idx) => (
+            <div key={s.id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Scene {idx + 1}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      s.source === "ai" ? "bg-violet-100 text-violet-700" : "bg-sky-100 text-sky-700"
+                    }`}
+                  >
+                    {s.source === "ai" ? "AI clip" : "Your clip"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-slate-400">
+                  <button onClick={() => move(s.id, -1)} className="px-1 hover:text-slate-700">↑</button>
+                  <button onClick={() => move(s.id, 1)} className="px-1 hover:text-slate-700">↓</button>
+                  <button onClick={() => remove(s.id)} className="px-1 hover:text-red-600">✕</button>
+                </div>
+              </div>
+
+              {s.source === "ai" ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={s.prompt}
+                    onChange={(e) => update(s.id, { prompt: e.target.value })}
+                    rows={2}
+                    placeholder="Describe this clip (e.g. slow pan over a workshop, warm light)…"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                  />
+                  <button
+                    onClick={() => generate(s)}
+                    disabled={s.status === "generating" || !aiConfigured || !s.prompt}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {s.status === "generating" ? "Generating… (1–3 min)" : "Generate clip"}
+                  </button>
+                  {!aiConfigured && (
+                    <p className="text-xs text-amber-600">
+                      Add <code>HIGGSFIELD_API_KEY</code> to generate AI clips.
+                    </p>
+                  )}
+                  {s.status === "error" && <p className="text-xs text-red-600">Error: {s.error}</p>}
+                </div>
+              ) : (
+                <input
+                  value={s.clipUrl}
+                  onChange={(e) => update(s.id, { clipUrl: e.target.value, status: "ready" })}
+                  placeholder="https://…link to your own clip"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                />
+              )}
+
+              {s.clipUrl && (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video src={s.clipUrl} controls className="mt-3 w-full max-w-xs rounded-lg border border-slate-200" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add scene */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => addScene("ai")}
+          className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800"
+        >
+          + AI clip
+        </button>
+        <button
+          onClick={() => addScene("user")}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          + Your clip
+        </button>
+      </div>
+
+      {/* Assemble */}
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-slate-700">Assemble video</h4>
+          <span className="text-xs text-slate-400">{readyCount} clip{readyCount === 1 ? "" : "s"} ready</span>
+        </div>
+        <button
+          onClick={assemble}
+          disabled={rendering || !renderConfigured || readyCount === 0}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {rendering ? `Rendering… (${renderStatus ?? "queued"})` : "Assemble into one video"}
+        </button>
+        {!renderConfigured && (
+          <p className="text-xs text-amber-600">
+            Add <code>SHOTSTACK_API_KEY</code> to stitch clips into a finished MP4.
+          </p>
+        )}
+        {renderError && <p className="text-xs text-red-600">Error: {renderError}</p>}
+
+        {finalUrl && (
+          <div className="space-y-3 pt-2">
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video src={finalUrl} controls className="w-full max-w-sm rounded-lg border border-slate-200" />
+            <a
+              href={finalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-xs font-medium text-slate-500 underline hover:text-slate-900"
+            >
+              Download / open video
+            </a>
+
+            {/* Publish the finished video */}
+            <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+              <h5 className="text-sm font-semibold text-slate-700">Publish this video</h5>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                rows={2}
+                placeholder="Caption…"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+              />
+              <div className="flex flex-wrap gap-2">
+                {VIDEO_PLATFORMS.map((p) => {
+                  const on = vidPlatforms.includes(p);
+                  return (
+                    <button
+                      key={p}
+                      onClick={() =>
+                        setVidPlatforms((prev) =>
+                          prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
+                        )
+                      }
+                      className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition ${
+                        on ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={publishVideo}
+                disabled={publishing || !publishConfigured || vidPlatforms.length === 0}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {publishing ? "Publishing…" : "Publish to GoHighLevel"}
+              </button>
+              {!publishConfigured && (
+                <p className="text-xs text-amber-600">
+                  Connect GoHighLevel for this brand (token + location) to publish.
+                </p>
+              )}
+              {pubError && <p className="text-xs text-red-600">Error: {pubError}</p>}
+              {pubResults.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {pubResults.map((r) => (
+                    <span
+                      key={r.platform}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        r.ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {r.platform}: {r.ok ? "posted" : (r.error ?? "failed")}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
