@@ -83,7 +83,7 @@ async function gatherBrand(
     const f = await getBrandFinancials(entity);
     if (!f.error)
       parts.push(
-        `Expenses 30d ${formatMoney(f.expenses30dCents, f.currency)}, net ${formatMoney(f.netCents, f.currency)}`,
+        `Expenses 12mo ${formatMoney(f.expensesCents, f.currency)}, net 12mo ${formatMoney(f.netCents, f.currency)}`,
       );
   }
 

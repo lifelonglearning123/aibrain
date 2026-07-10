@@ -77,7 +77,7 @@ export default async function RevenuePage({
     (s, r) => s + (r.stripe && !r.stripe.error ? r.stripe.revenue30dCents : 0),
     0,
   );
-  const totalExp = shown.reduce((s, r) => s + (r.qbData ? r.qbData.expenses30dCents : 0), 0);
+  const totalExp = shown.reduce((s, r) => s + (r.qbData ? r.qbData.expensesCents : 0), 0);
   const totalNet = shown.reduce((s, r) => s + (r.qbData ? r.qbData.netCents : 0), 0);
 
   const notConnected = allowedEntities.filter(
@@ -95,8 +95,8 @@ export default async function RevenuePage({
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="MRR" value={formatMoney(totalMrr, currency)} hint="Stripe · active subs" accent="#2563eb" />
         <StatCard label="Revenue (30d)" value={formatMoney(totalRev, currency)} hint="Stripe · succeeded charges" accent="#10b981" />
-        <StatCard label="Expenses (30d)" value={acct.anyConfigured ? formatMoney(totalExp, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L" : "Connect accounting"} accent="#ef4444" />
-        <StatCard label="Net (30d)" value={acct.anyConfigured ? formatMoney(totalNet, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L" : "From accounting"} accent="#f59e0b" />
+        <StatCard label="Expenses (12mo)" value={acct.anyConfigured ? formatMoney(totalExp, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L · 12 months" : "Connect accounting"} accent="#ef4444" />
+        <StatCard label="Net (12mo)" value={acct.anyConfigured ? formatMoney(totalNet, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L · 12 months" : "From accounting"} accent="#f59e0b" />
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -106,8 +106,8 @@ export default async function RevenuePage({
               <th className="px-4 py-2.5 font-medium">Brand</th>
               <th className="px-4 py-2.5 font-medium">MRR</th>
               <th className="px-4 py-2.5 font-medium">Revenue (30d)</th>
-              <th className="px-4 py-2.5 font-medium">Expenses (30d)</th>
-              <th className="px-4 py-2.5 font-medium">Net (30d)</th>
+              <th className="px-4 py-2.5 font-medium">Expenses (12mo)</th>
+              <th className="px-4 py-2.5 font-medium">Net (12mo)</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +122,7 @@ export default async function RevenuePage({
                   : [cell(r.stripe?.error ? "err" : "—"), cell(r.stripe?.error ? "err" : "—")]}
                 {r.qbData
                   ? [
-                      cell(formatMoney(r.qbData.expenses30dCents, r.qbData.currency)),
+                      cell(formatMoney(r.qbData.expensesCents, r.qbData.currency)),
                       cell(formatMoney(r.qbData.netCents, r.qbData.currency)),
                     ]
                   : [cell("—"), cell("—")]}
@@ -140,8 +140,9 @@ export default async function RevenuePage({
       )}
 
       <p className="text-xs text-slate-400">
-        Revenue = gross succeeded Stripe charges (minus refunds). Expenses &amp;
-        Net = your accounting Profit &amp; Loss (QuickBooks or Xero) for the last 30 days.
+        Revenue = gross succeeded Stripe charges (minus refunds, last 30 days).
+        Expenses &amp; Net = your accounting Profit &amp; Loss (QuickBooks or Xero)
+        for the last 12 months — accounting data lags, so a longer window keeps it meaningful.
       </p>
     </div>
   );

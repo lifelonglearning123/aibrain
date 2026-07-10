@@ -141,8 +141,9 @@ async function getValidAccessToken(
 export interface BrandFinancials {
   entityKey: EntityKey;
   name: string;
-  income30dCents: number;
-  expenses30dCents: number;
+  /** Figures cover the last 12 months (accounting data lags, so 30d is often blank). */
+  incomeCents: number;
+  expensesCents: number;
   netCents: number;
   currency: string;
   error?: string;
@@ -190,8 +191,8 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
   const base: BrandFinancials = {
     entityKey: entity,
     name,
-    income30dCents: 0,
-    expenses30dCents: 0,
+    incomeCents: 0,
+    expensesCents: 0,
     netCents: 0,
     currency: "GBP",
   };
@@ -201,7 +202,7 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
   const tok = await getValidAccessToken(entity);
   if (!tok) return { ...base, error: "not_connected" };
 
-  const start = ymd(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const start = ymd(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000));
   const end = ymd(new Date());
   const url = `${cfg.apiBase}/v3/company/${tok.realmId}/reports/ProfitAndLoss?start_date=${start}&end_date=${end}&minorversion=70`;
 
@@ -214,8 +215,8 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
     const parsed = parseProfitAndLoss(await res.json());
     return {
       ...base,
-      income30dCents: parsed.incomeCents,
-      expenses30dCents: parsed.expensesCents,
+      incomeCents: parsed.incomeCents,
+      expensesCents: parsed.expensesCents,
       netCents: parsed.netCents,
       currency: parsed.currency.toUpperCase(),
     };

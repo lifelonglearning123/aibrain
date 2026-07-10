@@ -207,8 +207,8 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
   const base: BrandFinancials = {
     entityKey: entity,
     name,
-    income30dCents: 0,
-    expenses30dCents: 0,
+    incomeCents: 0,
+    expensesCents: 0,
     netCents: 0,
     currency: currencyOverride ?? "GBP",
   };
@@ -217,7 +217,7 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
   const tok = await getValidAccessToken(entity);
   if (!tok) return { ...base, error: "not_connected" };
 
-  const from = ymd(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const from = ymd(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000));
   const to = ymd(new Date());
   const url = `${API_BASE}/Reports/ProfitAndLoss?fromDate=${from}&toDate=${to}`;
 
@@ -234,8 +234,8 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
     const parsed = parseProfitAndLoss(await res.json());
     return {
       ...base,
-      income30dCents: parsed.incomeCents,
-      expenses30dCents: parsed.expensesCents,
+      incomeCents: parsed.incomeCents,
+      expensesCents: parsed.expensesCents,
       netCents: parsed.netCents,
     };
   } catch (e) {
