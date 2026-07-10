@@ -14,8 +14,9 @@ const AUTH_URL = "https://login.xero.com/identity/connect/authorize";
 const TOKEN_URL = "https://identity.xero.com/connect/token";
 const CONNECTIONS_URL = "https://api.xero.com/connections";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
-// offline_access → refresh tokens; accounting.reports.read → P&L.
-const SCOPE = "offline_access accounting.reports.read";
+// Xero deprecated broad scopes for new apps (created after Mar 2026). Use the
+// GRANULAR scope for the Profit & Loss report. offline_access → refresh tokens.
+const SCOPE = "openid offline_access accounting.reports.profitandloss.read";
 
 export async function xeroConfig() {
   const clientId = await cred("XERO_CLIENT_ID");
