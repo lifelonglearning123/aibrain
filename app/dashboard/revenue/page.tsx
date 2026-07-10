@@ -3,7 +3,7 @@ import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { ENTITIES, resolveEntity } from "@/lib/entities";
 import { configuredStripeEntities, getBrandRevenue } from "@/lib/integrations/stripe";
-import { quickbooksConfig, getBrandFinancials } from "@/lib/integrations/quickbooks";
+import { accountingConfig, getBrandFinancials } from "@/lib/integrations/accounting";
 import { getAccess, scopeEntities } from "@/lib/access";
 import { formatMoney } from "@/lib/money";
 
@@ -25,27 +25,27 @@ export default async function RevenuePage({
   const stripeSet = new Set(
     (await configuredStripeEntities()).filter((k) => access.brands.includes(k)),
   );
-  const qb = await quickbooksConfig();
+  const acct = await accountingConfig();
 
   // No revenue source at all → connect state.
-  if (stripeSet.size === 0 && !qb.configured) {
+  if (stripeSet.size === 0 && !acct.anyConfigured) {
     return (
       <div className="space-y-6">
         <ViewHeader
           title="Revenue"
-          subtitle="Stripe &amp; QuickBooks — MRR, expenses, net"
+          subtitle="Stripe &amp; accounting (QuickBooks / Xero) — MRR, expenses, net"
           entity={entity}
         />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard label="MRR" value="—" hint="Connect Stripe" accent="#2563eb" />
           <StatCard label="Revenue (30d)" value="—" hint="Connect Stripe" accent="#10b981" />
-          <StatCard label="Expenses (30d)" value="—" hint="Connect QuickBooks" accent="#ef4444" />
-          <StatCard label="Net (30d)" value="—" hint="From QuickBooks" accent="#f59e0b" />
+          <StatCard label="Expenses (30d)" value="—" hint="Connect accounting" accent="#ef4444" />
+          <StatCard label="Net (30d)" value="—" hint="From accounting" accent="#f59e0b" />
         </div>
-        <EmptyState source="Stripe &amp; QuickBooks" phase="Phase 1">
-          Add a Stripe key per brand for revenue/MRR, and connect QuickBooks (per
-          brand) for expenses and net. Connect QuickBooks from{" "}
-          <strong>Connected apps</strong>.
+        <EmptyState source="Stripe &amp; accounting" phase="Phase 1">
+          Add a Stripe key per brand for revenue/MRR, and connect an accounting
+          tool per brand for expenses and net — <strong>QuickBooks</strong> or{" "}
+          <strong>Xero</strong>. Connect them from <strong>Connected apps</strong>.
         </EmptyState>
       </div>
     );
@@ -57,7 +57,7 @@ export default async function RevenuePage({
     scope.map(async (key) => {
       const name = ENTITIES.find((e) => e.key === key)!.name;
       const stripe = stripeSet.has(key) ? await getBrandRevenue(key) : null;
-      const financials = qb.configured ? await getBrandFinancials(key) : null;
+      const financials = acct.anyConfigured ? await getBrandFinancials(key) : null;
       const qbData = financials && !financials.error ? financials : null;
       return { key, name, stripe, qbData, hasStripeKey: stripeSet.has(key) };
     }),
@@ -88,15 +88,15 @@ export default async function RevenuePage({
     <div className="space-y-6">
       <ViewHeader
         title="Revenue"
-        subtitle="Live — Stripe (MRR/revenue) + QuickBooks (expenses/net) per brand"
+        subtitle="Live — Stripe (MRR/revenue) + accounting (expenses/net) per brand"
         entity={entity}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="MRR" value={formatMoney(totalMrr, currency)} hint="Stripe · active subs" accent="#2563eb" />
         <StatCard label="Revenue (30d)" value={formatMoney(totalRev, currency)} hint="Stripe · succeeded charges" accent="#10b981" />
-        <StatCard label="Expenses (30d)" value={qb.configured ? formatMoney(totalExp, currency) : "—"} hint={qb.configured ? "QuickBooks P&L" : "Connect QuickBooks"} accent="#ef4444" />
-        <StatCard label="Net (30d)" value={qb.configured ? formatMoney(totalNet, currency) : "—"} hint={qb.configured ? "QuickBooks P&L" : "From QuickBooks"} accent="#f59e0b" />
+        <StatCard label="Expenses (30d)" value={acct.anyConfigured ? formatMoney(totalExp, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L" : "Connect accounting"} accent="#ef4444" />
+        <StatCard label="Net (30d)" value={acct.anyConfigured ? formatMoney(totalNet, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L" : "From accounting"} accent="#f59e0b" />
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -135,13 +135,13 @@ export default async function RevenuePage({
       {notConnected.length > 0 && (
         <p className="text-xs text-slate-400">
           Not connected: {notConnected.map((e) => e.name).join(", ")} — add a
-          Stripe key and/or connect QuickBooks.
+          Stripe key and/or connect an accounting tool (QuickBooks or Xero).
         </p>
       )}
 
       <p className="text-xs text-slate-400">
         Revenue = gross succeeded Stripe charges (minus refunds). Expenses &amp;
-        Net = QuickBooks Profit &amp; Loss for the last 30 days.
+        Net = your accounting Profit &amp; Loss (QuickBooks or Xero) for the last 30 days.
       </p>
     </div>
   );

@@ -2,10 +2,13 @@ import { ViewHeader } from "@/components/ViewHeader";
 import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { ResearchPanel } from "@/components/ResearchPanel";
-import { ENTITIES, resolveEntity } from "@/lib/entities";
+import { ENTITIES, resolveEntity, type EntityKey } from "@/lib/entities";
 import { configuredGhlEntities, getBrandMarketing } from "@/lib/integrations/ghl";
+import { getBrandAdSpend } from "@/lib/integrations/facebook-ads";
+import { configuredStripeEntities, getBrandRevenue } from "@/lib/integrations/stripe";
 import { getAccess, scopeEntities } from "@/lib/access";
 import { apifyConfig } from "@/lib/integrations/apify";
+import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,25 @@ export default async function MarketingPage({
   const totLeads30 = ok.reduce((s, r) => s + r.new30d, 0);
   const totLeads7 = ok.reduce((s, r) => s + r.new7d, 0);
   const totLeads = ok.reduce((s, r) => s + r.totalLeads, 0);
+  const mktByKey = new Map(rows.map((r) => [r.entityKey, r]));
+
+  // Ad spend (Facebook) + revenue (Stripe) for cost-per-lead & ROAS.
+  const stripeSet = new Set(
+    (await configuredStripeEntities()).filter((k) => access.brands.includes(k)),
+  );
+  const [adRows, revRows] = await Promise.all([
+    Promise.all(scope.map(getBrandAdSpend)),
+    Promise.all(scope.map((k) => (stripeSet.has(k) ? getBrandRevenue(k) : Promise.resolve(null)))),
+  ]);
+  const revByKey = new Map(scope.map((k, i) => [k, revRows[i]] as const));
+  const adOk = adRows.filter((r) => !r.error);
+  const anyFb = adOk.length > 0;
+  const adCurrency = adOk.find((r) => r.currency)?.currency ?? "GBP";
+  const totalSpend30 = adOk.reduce((s, r) => s + r.spend30dCents, 0);
+  const totalSpend7 = adOk.reduce((s, r) => s + r.spend7dCents, 0);
+  const totalRev30 = revRows.reduce((s, r) => s + (r && !r.error ? r.revenue30dCents : 0), 0);
+  const blendedCpl = totLeads30 > 0 && totalSpend30 > 0 ? totalSpend30 / totLeads30 : null;
+  const roas = totalSpend30 > 0 && totalRev30 > 0 ? totalRev30 / totalSpend30 : null;
 
   // Combined top source across shown brands
   const combined = new Map<string, number>();
@@ -39,11 +61,22 @@ export default async function MarketingPage({
   const notConnected = allowedEntities.filter((e) => !configured.includes(e.key));
   const singleBrand = scope.length === 1 ? ok[0] : null;
 
+  const money = (cents: number) => formatMoney(cents, adCurrency);
+  const cplFor = (key: EntityKey, spendCents: number): string => {
+    const leads = mktByKey.get(key)?.new30d ?? 0;
+    return leads > 0 && spendCents > 0 ? money(Math.round(spendCents / leads)) : "—";
+  };
+  const roasFor = (key: EntityKey, spendCents: number): string => {
+    const rev = revByKey.get(key);
+    const revCents = rev && !rev.error ? rev.revenue30dCents : 0;
+    return spendCents > 0 && revCents > 0 ? `${(revCents / spendCents).toFixed(1)}×` : "—";
+  };
+
   return (
     <div className="space-y-6">
       <ViewHeader
         title="Marketing"
-        subtitle="Lead volume &amp; source across GoHighLevel · Apify research"
+        subtitle="Leads &amp; source (GoHighLevel) · ad spend &amp; ROAS (Facebook) · Apify research"
         entity={entity}
       />
 
@@ -60,6 +93,15 @@ export default async function MarketingPage({
             <StatCard label="Top channel" value={topSource} hint="By lead volume" accent="#f59e0b" />
             <StatCard label="Total leads" value={String(totLeads)} hint="All contacts" accent="#8b5cf6" />
           </div>
+
+          {anyFb && (
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard label="Ad spend (30d)" value={money(totalSpend30)} hint="Facebook Ads" accent="#1877f2" />
+              <StatCard label="Cost per lead" value={blendedCpl != null ? money(Math.round(blendedCpl)) : "—"} hint="Spend ÷ new leads" accent="#ef4444" />
+              <StatCard label="ROAS" value={roas != null ? `${roas.toFixed(1)}×` : "—"} hint="Revenue ÷ spend" accent="#10b981" />
+              <StatCard label="Ad spend (7d)" value={money(totalSpend7)} hint="Last 7 days" accent="#8b5cf6" />
+            </div>
+          )}
 
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
             <table className="w-full min-w-[520px] text-sm">
@@ -92,6 +134,45 @@ export default async function MarketingPage({
             </table>
           </div>
 
+          {/* Ad efficiency — only when Facebook Ads is connected for a shown brand */}
+          {anyFb && (
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <div className="border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
+                Ad efficiency — Facebook (last 30 days)
+              </div>
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
+                    <th className="px-4 py-2.5 font-medium">Brand</th>
+                    <th className="px-4 py-2.5 font-medium">Ad spend</th>
+                    <th className="px-4 py-2.5 font-medium">Leads (30d)</th>
+                    <th className="px-4 py-2.5 font-medium">Cost / lead</th>
+                    <th className="px-4 py-2.5 font-medium">ROAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adRows.map((a) => (
+                    <tr key={a.entityKey} className="border-b border-slate-50 last:border-0">
+                      <td className="px-4 py-2.5 font-medium text-slate-800">{a.name}</td>
+                      {a.error ? (
+                        <td colSpan={4} className="px-4 py-2.5 text-slate-400">
+                          {a.error === "not_configured" ? "Facebook Ads not connected" : `Error: ${a.error}`}
+                        </td>
+                      ) : (
+                        <>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-700">{money(a.spend30dCents)}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-700">{mktByKey.get(a.entityKey)?.new30d ?? 0}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-700">{cplFor(a.entityKey, a.spend30dCents)}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-700">{roasFor(a.entityKey, a.spend30dCents)}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {singleBrand && singleBrand.bySource.length > 0 && (
             <div className="rounded-xl border border-slate-200 bg-white p-5">
               <h3 className="mb-3 text-sm font-semibold text-slate-700">
@@ -119,6 +200,13 @@ export default async function MarketingPage({
             </div>
           )}
 
+          {!anyFb && (
+            <p className="text-xs text-slate-400">
+              Connect <strong>Facebook Ads</strong> (Settings → Facebook Ads) to see
+              spend, cost-per-lead and ROAS here. ROAS also needs a Stripe key for revenue.
+            </p>
+          )}
+
           {notConnected.length > 0 && (
             <p className="text-xs text-slate-400">
               Not connected: {notConnected.map((e) => e.name).join(", ")}.
@@ -126,8 +214,9 @@ export default async function MarketingPage({
           )}
 
           <p className="text-xs text-slate-400">
-            Note: reads up to 1,000 recent contacts per brand. Cost-per-lead / ROAS
-            needs ad-spend data (Facebook/Google Ads) — a later add.
+            Note: reads up to 1,000 recent contacts per brand. Cost-per-lead =
+            Facebook spend ÷ new GHL leads; ROAS = Stripe revenue ÷ spend
+            (assumes a single currency across sources).
           </p>
         </>
       )}

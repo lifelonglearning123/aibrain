@@ -1,4 +1,5 @@
 import { ghlConfigForEntity } from "@/lib/integrations/ghl";
+import { cred } from "@/lib/credentials";
 import type { EntityKey } from "@/lib/entities";
 
 /**
@@ -95,6 +96,31 @@ export function resolveGhlAccountIds(
     .map((a) => a.id);
 }
 
+// GHL's create-post requires a userId (a user in the location). Resolve once per
+// location: an explicit GHL_USER__<BRAND> override wins, else fetch the first user.
+const userIdCache = new Map<string, string>();
+
+async function resolveGhlUserId(
+  entity: EntityKey,
+  token: string,
+  locationId: string,
+): Promise<string | undefined> {
+  const override = await cred(`GHL_USER__${entity.toUpperCase().replace(/-/g, "_")}`);
+  if (override && override.trim()) return override.trim();
+  if (userIdCache.has(locationId)) return userIdCache.get(locationId);
+  try {
+    const res = await ghlFetch(token, `/users/?locationId=${encodeURIComponent(locationId)}`);
+    if (!res.ok) return undefined;
+    const data: any = await res.json().catch(() => ({}));
+    const users: any[] = data?.users ?? data?.results ?? [];
+    const id = users[0]?.id ? String(users[0].id) : undefined;
+    if (id) userIdCache.set(locationId, id);
+    return id;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface GhlPostResult {
   ok: boolean;
   status: number;
@@ -113,6 +139,16 @@ export async function createSocialPost(params: {
     return { ok: false, status: 0, error: "not_configured" };
   }
 
+  // GHL requires a userId on the post.
+  const userId = await resolveGhlUserId(params.entity, cfg.token, cfg.locationId);
+  if (!userId) {
+    return {
+      ok: false,
+      status: 0,
+      error: "no_ghl_user — set GHL_USER__<BRAND> in Settings or grant the token users.readonly",
+    };
+  }
+
   // GHL schedules by date; use a near-future time to publish shortly ("post now").
   const scheduleDate =
     params.scheduleDate ?? new Date(Date.now() + 2 * 60 * 1000).toISOString();
@@ -120,12 +156,12 @@ export async function createSocialPost(params: {
   const body: any = {
     accountIds: params.accountIds,
     summary: params.text,
+    // Must always be present as an array (empty is allowed when there's no image).
+    media: (params.mediaUrls ?? []).map((url) => ({ url })),
     type: "post",
     scheduleDate,
+    userId,
   };
-  if (params.mediaUrls?.length) {
-    body.media = params.mediaUrls.map((url) => ({ url }));
-  }
 
   try {
     const res = await ghlFetch(

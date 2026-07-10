@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getIntegrations } from "@/lib/integrations/registry";
 import { quickbooksConfig } from "@/lib/integrations/quickbooks";
+import { xeroConfig } from "@/lib/integrations/xero";
 import { ENTITIES } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { getAccess } from "@/lib/access";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function ConnectedAppsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ quickbooks?: string }>;
+  searchParams: Promise<{ quickbooks?: string; xero?: string }>;
 }) {
   // Owner-only: connection status spans every company.
   if (supabaseConfig().configured) {
@@ -18,11 +19,11 @@ export default async function ConnectedAppsPage({
     if (!access.isOwner) redirect("/dashboard");
   }
 
-  const { quickbooks } = await searchParams;
+  const { quickbooks, xero } = await searchParams;
   const integrations = await getIntegrations();
   const engines = integrations.filter((i) => i.internal);
   const tools = integrations.filter((i) => !i.internal);
-  const qb = await quickbooksConfig();
+  const [qb, xeroCfg] = await Promise.all([quickbooksConfig(), xeroConfig()]);
 
   return (
     <div className="space-y-6">
@@ -48,6 +49,20 @@ export default async function ConnectedAppsPage({
         </div>
       )}
 
+      {xero && (
+        <div
+          className={`rounded-lg border p-3 text-sm ${
+            xero === "connected"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
+          {xero === "connected"
+            ? "Xero organisation connected."
+            : `Xero connection failed (${xero}).`}
+        </div>
+      )}
+
       <Section title="Your engines" items={engines} />
       <Section title="Tools &amp; data sources" items={tools} />
 
@@ -67,6 +82,28 @@ export default async function ConnectedAppsPage({
               </a>
             ))}
           </div>
+        </div>
+      )}
+
+      {xeroCfg.configured && (
+        <div>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
+            Connect Xero organisations
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {ENTITIES.map((e) => (
+              <a
+                key={e.key}
+                href={`/api/integrations/xero/connect?entity=${e.key}`}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Connect {e.name}
+              </a>
+            ))}
+          </div>
+          <p className="mt-1.5 text-xs text-slate-400">
+            A brand connected to both uses Xero. Connect each brand to just one.
+          </p>
         </div>
       )}
     </div>

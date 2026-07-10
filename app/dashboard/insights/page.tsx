@@ -20,6 +20,7 @@ interface Row {
 }
 
 const GROUPS: { kind: string; label: string }[] = [
+  { kind: "preference", label: "Your style preferences" },
   { kind: "pain_point", label: "Pain points" },
   { kind: "objection", label: "Objections" },
   { kind: "faq", label: "Frequently asked" },

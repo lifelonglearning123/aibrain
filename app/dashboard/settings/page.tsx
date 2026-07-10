@@ -50,6 +50,11 @@ export default async function SettingsPage() {
       fields: ENTITIES.flatMap((e) => [
         { name: `GHL_TOKEN__${suffix(e.key)}`, label: `${e.name} — auth token`, kind: "secret" as const },
         { name: `GHL_LOCATION__${suffix(e.key)}`, label: `${e.name} — location ID`, kind: "text" as const },
+        {
+          name: `GHL_USER__${suffix(e.key)}`,
+          label: `${e.name} — user ID (optional, for social publishing)`,
+          kind: "text" as const,
+        },
       ]),
     },
     {
@@ -61,7 +66,22 @@ export default async function SettingsPage() {
       })),
     },
     {
-      title: "QuickBooks — expenses & net (OAuth)",
+      title: "Facebook Ads — per brand (Cost-per-lead · ROAS)",
+      fields: ENTITIES.flatMap((e) => [
+        {
+          name: `FACEBOOK_ADS_TOKEN__${suffix(e.key)}`,
+          label: `${e.name} — access token (system-user or long-lived)`,
+          kind: "secret" as const,
+        },
+        {
+          name: `FACEBOOK_AD_ACCOUNT__${suffix(e.key)}`,
+          label: `${e.name} — ad account ID (act_… or the number)`,
+          kind: "text" as const,
+        },
+      ]),
+    },
+    {
+      title: "QuickBooks — expenses & net (OAuth). Use for brands on QuickBooks.",
       fields: [
         { name: "QUICKBOOKS_CLIENT_ID", label: "Client ID", kind: "text" },
         { name: "QUICKBOOKS_CLIENT_SECRET", label: "Client secret", kind: "secret" },
@@ -75,12 +95,37 @@ export default async function SettingsPage() {
       ],
     },
     {
+      title: "Xero — expenses & net (OAuth). Use for brands on Xero (e.g. Artificial Ignorance).",
+      fields: [
+        { name: "XERO_CLIENT_ID", label: "Client ID", kind: "text" },
+        { name: "XERO_CLIENT_SECRET", label: "Client secret", kind: "secret" },
+        {
+          name: "XERO_REDIRECT_URI",
+          label: "Redirect URI (must match your Xero app exactly)",
+          kind: "text",
+          placeholder: "https://aibrain.macaws.ai/api/integrations/xero/callback",
+        },
+      ],
+    },
+    {
       title: "Higgsfield — images + AI video clips",
       fields: [
         {
           name: "HIGGSFIELD_API_KEY",
           label: "API key — format KEY_ID:KEY_SECRET (both parts, joined by a colon)",
           kind: "secret",
+        },
+        {
+          name: "HIGGSFIELD_MODEL",
+          label: "Image model (optional) — V1 text→image model",
+          kind: "text",
+          placeholder: "soul",
+        },
+        {
+          name: "HIGGSFIELD_VIDEO_MODEL",
+          label: "Video model (optional)",
+          kind: "text",
+          placeholder: "dop-turbo",
         },
       ],
     },

@@ -31,6 +31,8 @@ export function SocialComposer({
   const [topic, setTopic] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(DEFAULT_PLATFORMS);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [originals, setOriginals] = useState<Draft[]>([]);
+  const [personalised, setPersonalised] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -54,6 +56,7 @@ export function SocialComposer({
     const stored = window.localStorage.getItem(`bv:${brand}`);
     setBrandVoice(stored ?? "");
     setDrafts([]);
+    setOriginals([]);
     setImageUrl(null);
     setPubResults([]);
   }, [brand]);
@@ -83,6 +86,8 @@ export function SocialComposer({
       const data = await res.json();
       if (data.ok) {
         setDrafts(data.posts ?? []);
+        setOriginals(data.posts ?? []);
+        setPersonalised(Boolean(data.usedPreferences));
         setImagePrompt((prev) => prev || topic);
       } else setError(data.error ?? "draft_failed");
     } catch {
@@ -92,10 +97,42 @@ export function SocialComposer({
     }
   }
 
+  function updateDraft(i: number, text: string) {
+    setDrafts((prev) => prev.map((d, idx) => (idx === i ? { ...d, text } : d)));
+  }
+
+  // Preference capture: record what you approve / edit / reject so future drafts sharpen.
+  async function sendFeedback(mode: "publish" | "reject") {
+    const events = drafts.map((d, i) => {
+      const original = originals[i]?.text ?? d.text;
+      const action = mode === "reject" ? "reject" : original !== d.text ? "edit" : "approve";
+      return { entity: brand, kind: "social", platform: d.platform, original, final: d.text, action };
+    });
+    if (events.length === 0) return;
+    try {
+      await fetch("/api/preferences/feedback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ events }),
+      });
+    } catch {
+      /* non-fatal — never block the user on feedback capture */
+    }
+  }
+
+  function discard() {
+    void sendFeedback("reject");
+    setDrafts([]);
+    setOriginals([]);
+    setPubResults([]);
+    setImageUrl(null);
+  }
+
   async function publish() {
     setPublishing(true);
     setPubError(null);
     setPubResults([]);
+    void sendFeedback("publish");
     try {
       const res = await fetch("/api/social/publish", {
         method: "POST",
@@ -116,9 +153,35 @@ export function SocialComposer({
     }
   }
 
+  async function pollImage(id: string) {
+    // Poll up to ~2.5 min; each request is short so it never hits a function timeout.
+    for (let i = 0; i < 50; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const res = await fetch(`/api/social/image/status?id=${encodeURIComponent(id)}`);
+        const data = await res.json();
+        if (data.url) {
+          setImageUrl(data.url);
+          setImageLoading(false);
+          return;
+        }
+        if (data.status === "failed" || data.status === "error") {
+          setImageError(data.error ?? "failed");
+          setImageLoading(false);
+          return;
+        }
+      } catch {
+        /* keep polling */
+      }
+    }
+    setImageError("timeout");
+    setImageLoading(false);
+  }
+
   async function generateImage() {
     setImageLoading(true);
     setImageError(null);
+    setImageUrl(null);
     try {
       const res = await fetch("/api/social/image", {
         method: "POST",
@@ -126,11 +189,24 @@ export function SocialComposer({
         body: JSON.stringify({ prompt: imagePrompt, aspect }),
       });
       const data = await res.json();
-      if (data.ok && data.url) setImageUrl(data.url);
-      else setImageError(data.error ?? "image_failed");
+      if (!data.ok) {
+        setImageError(data.error ?? "image_failed");
+        setImageLoading(false);
+        return;
+      }
+      if (data.url) {
+        setImageUrl(data.url);
+        setImageLoading(false);
+        return;
+      }
+      if (data.id) {
+        await pollImage(data.id);
+        return;
+      }
+      setImageError("image_failed");
+      setImageLoading(false);
     } catch {
       setImageError("request_failed");
-    } finally {
       setImageLoading(false);
     }
   }
@@ -256,17 +332,38 @@ export function SocialComposer({
       <div className="space-y-3">
         {drafts.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">
-            Drafts appear here, tailored per platform.
+            Drafts appear here, tailored per platform. Tweak any of them before
+            publishing — your edits teach the brain your style.
           </div>
         ) : (
-          drafts.map((d) => (
-            <div key={d.platform} className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {d.platform}
+          <>
+            {personalised && (
+              <div className="rounded-lg bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-600">
+                ✨ Tailored to your style — learned from what you&apos;ve approved and edited.
               </div>
-              <p className="whitespace-pre-wrap text-sm text-slate-700">{d.text}</p>
-            </div>
-          ))
+            )}
+            {drafts.map((d, i) => {
+              const edited = Boolean(originals[i] && originals[i].text !== d.text);
+              return (
+                <div key={d.platform} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {d.platform}
+                    </span>
+                    {edited && (
+                      <span className="text-[10px] font-medium text-amber-600">edited ✎</span>
+                    )}
+                  </div>
+                  <textarea
+                    value={d.text}
+                    onChange={(e) => updateDraft(i, e.target.value)}
+                    rows={5}
+                    className="w-full resize-y rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                  />
+                </div>
+              );
+            })}
+          </>
         )}
         {drafts.length > 0 && (
           <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
@@ -322,13 +419,27 @@ export function SocialComposer({
 
         {drafts.length > 0 && (
           <div className="space-y-2">
-            <button
-              onClick={publish}
-              disabled={publishing || !publishConfigured}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {publishing ? "Publishing…" : "Publish to platforms"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={publish}
+                disabled={publishing || !publishConfigured}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {publishing ? "Publishing…" : "Publish to platforms"}
+              </button>
+              <button
+                onClick={discard}
+                disabled={publishing}
+                title="Discard these drafts — the brain learns from what you reject"
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                Discard
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Publishing an edited draft, or discarding one, teaches the brain your
+              style for next time.
+            </p>
             {!publishConfigured && (
               <p className="text-xs text-amber-600">
                 Connect GoHighLevel for {brandName} (token + location) to publish.

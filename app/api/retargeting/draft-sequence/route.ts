@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { draftSequence } from "@/lib/ai/sequence";
 import { openaiConfig } from "@/lib/ai/openai";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
+import { getPreferenceGuidance } from "@/lib/preferences";
 import { resolveEntity, ALL, ENTITIES, type EntityKey } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { getAccess } from "@/lib/access";
@@ -34,10 +35,16 @@ export async function POST(req: Request) {
   const knowledge = knowledgePrompt(
     await getBrandKnowledge(entity === ALL ? "" : entity, { includeShared }),
   );
+  const preferences = entity === ALL ? "" : await getPreferenceGuidance(entity, "sequence");
 
   try {
-    const steps = await draftSequence({ brandName, goal, knowledge });
-    return NextResponse.json({ ok: true, steps, usedInsights: knowledge.length > 0 });
+    const steps = await draftSequence({ brandName, goal, knowledge, preferences });
+    return NextResponse.json({
+      ok: true,
+      steps,
+      usedInsights: knowledge.length > 0,
+      usedPreferences: preferences.length > 0,
+    });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "draft_failed" },

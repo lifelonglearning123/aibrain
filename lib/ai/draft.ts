@@ -29,8 +29,9 @@ export async function draftPosts(params: {
   topic: string;
   platforms: string[];
   insights?: string;
+  preferences?: string;
 }): Promise<Draft[]> {
-  const { brandVoice, topic, platforms, insights } = params;
+  const { brandVoice, topic, platforms, insights, preferences } = params;
   const rules = platforms
     .map((p) => `- ${p}: ${PLATFORM_RULES[p] ?? "platform-appropriate best practice"}`)
     .join("\n");
@@ -38,6 +39,8 @@ export async function draftPosts(params: {
   const system =
     "You are an expert social media copywriter. Write posts strictly in the user's brand voice, " +
     "tailored to each platform's norms. Never invent facts or claims not supported by the brand voice. " +
+    "If the user's learned style preferences are provided, follow them closely — they reflect how this " +
+    "specific user edits drafts. " +
     'Return ONLY JSON of the form {"posts":[{"platform":"<name>","text":"<post>"}]}.';
 
   const learned = insights
@@ -45,9 +48,14 @@ export async function draftPosts(params: {
       `points/objections and use these angles, in the customers' own words):\n${insights}\n\n`
     : "";
 
+  const prefs = preferences
+    ? `HOW THIS USER LIKES DRAFTS (learned from what they approve/edit/reject — match this closely):\n${preferences}\n\n`
+    : "";
+
   const user =
     `BRAND VOICE:\n${brandVoice}\n\n` +
     learned +
+    prefs +
     `TOPIC: ${topic}\n\n` +
     `Write one post for each of these platforms, each tailored to its norms:\n${rules}\n\n` +
     `Return JSON with a "posts" array, one entry per requested platform.`;

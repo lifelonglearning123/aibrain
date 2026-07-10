@@ -10,6 +10,7 @@ export type IntegrationCategory =
   | "engine"
   | "revenue"
   | "crm"
+  | "ads"
   | "research"
   | "ai"
   | "media"
@@ -31,13 +32,15 @@ async function all(...names: string[]): Promise<boolean> {
 }
 
 export async function getIntegrations(): Promise<Integration[]> {
-  const [goalEngine, signal, stripe, quickbooks, ghl, blotato, higgsfield, shotstack, apify, openai] =
+  const [goalEngine, signal, stripe, quickbooks, xero, ghl, facebookAds, blotato, higgsfield, shotstack, apify, openai] =
     await Promise.all([
       all("GOAL_ENGINE_URL", "GOAL_ENGINE_ENROLL_SECRET"),
       all("SIGNAL_SUPABASE_URL", "SIGNAL_SUPABASE_SERVICE_KEY"),
       anyCredWithPrefix("STRIPE_KEY__"),
       all("QUICKBOOKS_CLIENT_ID", "QUICKBOOKS_CLIENT_SECRET", "QUICKBOOKS_REDIRECT_URI"),
+      all("XERO_CLIENT_ID", "XERO_CLIENT_SECRET", "XERO_REDIRECT_URI"),
       anyCredWithPrefix("GHL_TOKEN__"),
+      anyCredWithPrefix("FACEBOOK_ADS_TOKEN__"),
       credSet("BLOTATO_API_KEY"),
       credSet("HIGGSFIELD_API_KEY"),
       credSet("SHOTSTACK_API_KEY"),
@@ -83,6 +86,14 @@ export async function getIntegrations(): Promise<Integration[]> {
       internal: false,
     },
     {
+      key: "xero",
+      name: "Xero",
+      category: "revenue",
+      configured: xero,
+      note: "Expenses & net via Profit-and-Loss for brands on Xero (OAuth, per brand).",
+      internal: false,
+    },
+    {
       key: "ghl",
       name: "GoHighLevel",
       category: "crm",
@@ -112,6 +123,14 @@ export async function getIntegrations(): Promise<Integration[]> {
       category: "media",
       configured: shotstack,
       note: "Assembles video clips into a finished MP4 (Video).",
+      internal: false,
+    },
+    {
+      key: "facebook-ads",
+      name: "Facebook Ads",
+      category: "ads",
+      configured: facebookAds,
+      note: "Ad spend per brand → cost-per-lead & ROAS (Marketing view).",
       internal: false,
     },
     {

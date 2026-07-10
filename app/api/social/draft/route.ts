@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { draftPosts } from "@/lib/ai/draft";
 import { openaiConfig } from "@/lib/ai/openai";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
+import { getPreferenceGuidance } from "@/lib/preferences";
 import { resolveEntity, ALL, type EntityKey } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { getAccess } from "@/lib/access";
@@ -48,9 +49,16 @@ export async function POST(req: Request) {
     const includeShared = access ? access.isOwner : true;
     const knowledge = await getBrandKnowledge(entity === ALL ? "" : entity, { includeShared });
     const insights = knowledgePrompt(knowledge);
+    // Inject learned style preferences (from what you approve/edit/reject).
+    const preferences = entity === ALL ? "" : await getPreferenceGuidance(entity, "social");
 
-    const posts = await draftPosts({ brandVoice, topic, platforms, insights });
-    return NextResponse.json({ ok: true, posts, usedInsights: insights.length > 0 });
+    const posts = await draftPosts({ brandVoice, topic, platforms, insights, preferences });
+    return NextResponse.json({
+      ok: true,
+      posts,
+      usedInsights: insights.length > 0,
+      usedPreferences: preferences.length > 0,
+    });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "draft_failed" },

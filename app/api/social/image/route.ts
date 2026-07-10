@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { generateImage, higgsfieldConfig } from "@/lib/integrations/higgsfield";
+import { submitImage, higgsfieldConfig } from "@/lib/integrations/higgsfield";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
-// Image generation is async; allow a longer function timeout (needs Vercel Pro).
-export const maxDuration = 120;
+// Submits the job and returns fast; the browser polls /api/social/image/status.
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   if (supabaseConfig().configured) {
@@ -28,6 +28,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "prompt_required" }, { status: 400 });
   }
 
-  const result = await generateImage({ prompt, aspect: body.aspect ?? "1:1" });
+  const result = await submitImage({ prompt, aspect: body.aspect ?? "1:1" });
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
 }

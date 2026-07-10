@@ -6,6 +6,7 @@ import {
 } from "@/lib/integrations/ghl";
 import { extractInsights } from "@/lib/ai/insights";
 import { openaiConfig } from "@/lib/ai/openai";
+import { distillPreferences } from "@/lib/preferences";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
 
@@ -112,6 +113,39 @@ export async function runBrandPass(entity: EntityKey): Promise<number> {
       }
     }
   }
+
+  // Preferences: distil recent edit/reject signals into durable style rules.
+  const { data: fb } = await admin
+    .from("content_feedback")
+    .select("platform,original,final,action,reason")
+    .eq("entity_key", entity)
+    .in("action", ["edit", "reject"])
+    .order("created_at", { ascending: false })
+    .limit(60);
+  if (fb && fb.length > 0) {
+    const rules = await distillPreferences({ brandName, events: fb });
+    await admin
+      .from("brand_knowledge")
+      .delete()
+      .eq("scope", "brand")
+      .eq("entity_key", entity)
+      .eq("kind", "preference")
+      .eq("source", "feedback");
+    if (rules.length > 0) {
+      await admin.from("brand_knowledge").insert(
+        rules.map((r) => ({
+          scope: "brand",
+          entity_key: entity,
+          kind: "preference",
+          text: r.text,
+          converts: false,
+          source: "feedback",
+        })),
+      );
+      written += rules.length;
+    }
+  }
+
   return written;
 }
 

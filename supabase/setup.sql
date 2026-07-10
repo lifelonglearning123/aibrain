@@ -253,6 +253,26 @@ create table if not exists memberships (
 );
 alter table memberships enable row level security;   -- no policy = service role only
 
+-- ── Preference capture (learn from approve / edit / reject on AI drafts) ─────
+create table if not exists content_feedback (
+  id         uuid primary key default gen_random_uuid(),
+  entity_key text,
+  kind       text not null default 'social',   -- social | sequence
+  platform   text,
+  original   text,
+  final      text,
+  action     text not null check (action in ('approve','edit','reject')),
+  reason     text,
+  created_at timestamptz not null default now()
+);
+create index if not exists content_feedback_idx
+  on content_feedback(entity_key, kind, created_at desc);
+alter table content_feedback enable row level security;
+do $$ begin
+  execute 'drop policy if exists "read for authenticated" on content_feedback';
+  execute 'create policy "read for authenticated" on content_feedback for select to authenticated using (true)';
+end $$;
+
 -- Master owner (edit the email to yours). Seeded here so re-running setup.sql can
 -- NEVER lock you out: this account always has full access to every company.
 insert into memberships (email, role, brands)

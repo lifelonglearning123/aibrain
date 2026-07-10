@@ -23,3 +23,5 @@ next-env.d.ts
 # OS / editor noise
 .DS_Store
 Thumbs.db
+
+.vercel

@@ -17,20 +17,27 @@ export async function draftSequence(params: {
   brandName?: string;
   goal: string;
   knowledge: string;
+  preferences?: string;
 }): Promise<SequenceStep[]> {
-  const { brandName, goal, knowledge } = params;
+  const { brandName, goal, knowledge, preferences } = params;
 
   const system =
     "You are a retargeting copywriter. Design a short multi-step outreach sequence (email/SMS) " +
     "that moves a lead toward the goal by handling the REAL objections and using the winning " +
-    "angles provided. Keep messages concise and human, one clear CTA each. Return ONLY JSON: " +
+    "angles provided. Keep messages concise and human, one clear CTA each. If the user's learned " +
+    "style preferences are provided, follow them closely. Return ONLY JSON: " +
     '{"steps":[{"day":0,"channel":"email|sms","subject":"(email only)","message":"..."}]} — 3 to 5 steps ' +
     "spread over a sensible cadence (e.g. day 0, 2, 5, 9).";
+
+  const prefs = preferences
+    ? `HOW THIS USER LIKES DRAFTS (learned from their edits — match this closely):\n${preferences}\n\n`
+    : "";
 
   const user =
     `BRAND: ${brandName ?? "the brand"}\n` +
     `GOAL: ${goal}\n\n` +
     `WHAT WE'VE LEARNED FROM REAL CUSTOMERS (address these directly):\n${knowledge || "(no learned insights yet — use general best practice)"}\n\n` +
+    prefs +
     "Design the sequence as JSON.";
 
   const json = (await chatJSON(system, user)) as { steps?: unknown } | null;
