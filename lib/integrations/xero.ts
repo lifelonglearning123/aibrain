@@ -33,13 +33,16 @@ export async function xeroConfig() {
 export async function authorizeUrl(entity: EntityKey): Promise<string | null> {
   const { clientId, redirectUri, configured } = await xeroConfig();
   if (!configured || !clientId || !redirectUri) return null;
-  const url = new URL(AUTH_URL);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("scope", SCOPE);
-  url.searchParams.set("state", entity);
-  return url.toString();
+  // Build the query manually: the scope separator MUST be %20, not "+" (which
+  // URLSearchParams produces) — Xero rejects "+" with invalid_scope.
+  const query = [
+    `response_type=code`,
+    `client_id=${encodeURIComponent(clientId)}`,
+    `redirect_uri=${encodeURIComponent(redirectUri)}`,
+    `scope=${encodeURIComponent(SCOPE)}`,
+    `state=${encodeURIComponent(entity)}`,
+  ].join("&");
+  return `${AUTH_URL}?${query}`;
 }
 
 interface TokenResponse {
