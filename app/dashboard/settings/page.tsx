@@ -157,6 +157,28 @@ export default async function SettingsPage() {
         { name: "SIGNAL_SUPABASE_SERVICE_KEY", label: "Signal Supabase service key (used read-only)", kind: "secret" },
       ],
     },
+    {
+      title: "Loom — video knowledge (weekly auto-sync via Apify). Uses your Apify token above.",
+      fields: [
+        { name: "LOOM_EMAIL", label: "Loom login email", kind: "text", placeholder: "you@macaws.ai" },
+        {
+          name: "LOOM_PASSWORD",
+          label: "Loom password — stored securely, used only to fetch your own transcripts",
+          kind: "secret",
+        },
+        {
+          name: "LOOM_COOKIE",
+          label: "OR Loom session cookie — use this instead of the password if you have 2FA",
+          kind: "secret",
+        },
+        {
+          name: "LOOM_APIFY_ACTOR",
+          label: "Apify actor (optional — leave blank to use the default we pick)",
+          kind: "text",
+          placeholder: "automation-lab/loom-scraper",
+        },
+      ],
+    },
   ];
 
   const names = groups.flatMap((g) => g.fields.map((f) => f.name));
