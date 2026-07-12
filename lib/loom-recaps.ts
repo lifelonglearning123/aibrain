@@ -14,7 +14,6 @@ import { ENTITIES, type EntityKey } from "@/lib/entities";
 const RECAP_QUERY = "from:no-reply@send.loom.com subject:Recap";
 
 interface ParsedRecap {
-  externalId: string;
   title: string;
   url: string | null;
   summary: string;
@@ -25,8 +24,7 @@ interface ParsedRecap {
 function parseRecap(msg: GmailMessage): ParsedRecap {
   const title = msg.subject.replace(/^Recap:\s*/i, "").trim() || "Untitled recording";
   const idMatch = msg.text.match(/loom\.com\/share\/([a-f0-9]{16,})/i);
-  const videoId = idMatch ? idMatch[1] : null;
-  const url = videoId ? `https://www.loom.com/share/${videoId}` : null;
+  const url = idMatch ? `https://www.loom.com/share/${idMatch[1]}` : null;
 
   // Trim the marketing footer.
   let content = msg.text;
@@ -44,7 +42,17 @@ function parseRecap(msg: GmailMessage): ParsedRecap {
     if (!Number.isNaN(d.getTime())) occurredAt = d.toISOString();
   }
 
-  return { externalId: videoId ?? msg.id, title, url, summary, content, occurredAt };
+  return { title, url, summary, content, occurredAt };
+}
+
+/** Run fn over items with bounded concurrency (avoids rate limits + timeouts). */
+async function mapLimited<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    const chunk = items.slice(i, i + limit);
+    out.push(...(await Promise.all(chunk.map(fn))));
+  }
+  return out;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -95,46 +103,56 @@ export interface IngestResult {
   error?: string;
 }
 
-/** Pull new Loom recaps from Gmail and ingest them. `limit` caps new items per run. */
+/**
+ * Pull new Loom recaps from Gmail and ingest them. Dedupes by Gmail message id
+ * BEFORE fetching, then fetches + AI-analyses the new batch with bounded
+ * concurrency so each request finishes well within the serverless time limit.
+ * `limit` caps new items per run; call repeatedly (the button loops) to backfill.
+ */
 export async function ingestRecaps(opts: { limit?: number } = {}): Promise<IngestResult> {
   if (!(await openaiConfig()).configured)
     return { ok: false, processed: 0, added: 0, skipped: 0, error: "openai_not_configured" };
   const admin = createAdminClient();
   if (!admin) return { ok: false, processed: 0, added: 0, skipped: 0, error: "store_unavailable" };
 
-  const limit = opts.limit ?? 25;
-  const ids = await searchMessageIds(RECAP_QUERY, 150);
+  const limit = opts.limit ?? 12;
+  const ids = await searchMessageIds(RECAP_QUERY, 300); // covers the full history
   if (ids.length === 0) {
     return { ok: false, processed: 0, added: 0, skipped: 0, error: "no_recaps_or_not_connected" };
   }
 
-  let processed = 0;
+  // Dedupe against what's already stored (external_id = Gmail message id).
+  const { data: existingRows } = await admin
+    .from("knowledge_documents")
+    .select("external_id")
+    .eq("source", "loom")
+    .in("external_id", ids);
+  const done = new Set((existingRows ?? []).map((r) => r.external_id as string));
+  const freshIds = ids.filter((id) => !done.has(id)).slice(0, limit);
+  const skipped = ids.length - ids.filter((id) => !done.has(id)).length;
+
+  if (freshIds.length === 0) {
+    return { ok: true, processed: 0, added: 0, skipped };
+  }
+
+  // Fetch + parse (fast Gmail calls) then AI-analyse — both concurrency-bounded.
+  const msgs = (await mapLimited(freshIds, 8, getMessage)).filter(Boolean) as GmailMessage[];
+  const parsedItems = msgs.map((m) => ({ id: m.id, p: parseRecap(m) }));
+  const analyses = await mapLimited(parsedItems, 4, (item) =>
+    analyzeRecap({ title: item.p.title, content: item.p.content }).catch(() => ({
+      scope: "shared" as const,
+      entityKey: null,
+      insights: [],
+    })),
+  );
+
   let added = 0;
-  let skipped = 0;
-
-  for (const id of ids) {
-    if (added >= limit) break;
-    const msg = await getMessage(id);
-    if (!msg) continue;
-    const p = parseRecap(msg);
-
-    const { data: existing } = await admin
-      .from("knowledge_documents")
-      .select("id")
-      .eq("source", "loom")
-      .eq("external_id", p.externalId)
-      .maybeSingle();
-    if (existing) {
-      skipped++;
-      continue;
-    }
-
-    processed++;
-    const a = await analyzeRecap({ title: p.title, content: p.content });
-
-    await admin.from("knowledge_documents").insert({
+  for (let i = 0; i < parsedItems.length; i++) {
+    const { id, p } = parsedItems[i];
+    const a = analyses[i];
+    const { error } = await admin.from("knowledge_documents").insert({
       source: "loom",
-      external_id: p.externalId,
+      external_id: id,
       entity_key: a.entityKey,
       scope: a.scope,
       title: p.title,
@@ -143,15 +161,15 @@ export async function ingestRecaps(opts: { limit?: number } = {}): Promise<Inges
       content: p.content,
       occurred_at: p.occurredAt,
     });
-
+    if (error) continue; // unique-violation race → already ingested
     if (a.insights.length) {
       await admin.from("brand_knowledge").insert(
-        a.insights.map((i) => ({
+        a.insights.map((ins) => ({
           scope: a.scope,
           entity_key: a.scope === "brand" ? a.entityKey : null,
-          kind: i.kind,
-          text: i.text,
-          converts: i.converts,
+          kind: ins.kind,
+          text: ins.text,
+          converts: ins.converts,
           source: "loom",
         })),
       );
@@ -162,10 +180,10 @@ export async function ingestRecaps(opts: { limit?: number } = {}): Promise<Inges
   await admin.from("learning_runs").insert({
     entity_key: null,
     source: "loom",
-    calls_seen: processed,
+    calls_seen: parsedItems.length,
     insights_written: added,
     status: "success",
   });
 
-  return { ok: true, processed, added, skipped };
+  return { ok: true, processed: parsedItems.length, added, skipped };
 }

@@ -13,6 +13,6 @@ export async function GET(req: Request) {
     if (auth !== `Bearer ${secret}`) return new Response("unauthorized", { status: 401 });
   }
 
-  const result = await ingestRecaps({ limit: 40 });
+  const result = await ingestRecaps({ limit: 12 });
   return Response.json(result, { status: result.ok ? 200 : 500 });
 }

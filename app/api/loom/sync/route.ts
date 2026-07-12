@@ -13,6 +13,6 @@ export async function POST() {
     if (!access.isOwner) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
   }
 
-  const result = await ingestRecaps({ limit: 25 });
+  const result = await ingestRecaps({ limit: 12 });
   return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }
