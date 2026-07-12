@@ -170,6 +170,17 @@ export default async function SettingsPage() {
         },
       ],
     },
+    {
+      title: "Loom cookie — one-time full-library transcript import (advanced)",
+      fields: [
+        {
+          name: "LOOM_COOKIE",
+          label:
+            "Loom session cookie — Cookie-Editor JSON export while on a loom.com tab (NOT a Google page). Expires ~weekly.",
+          kind: "secret",
+        },
+      ],
+    },
   ];
 
   const names = groups.flatMap((g) => g.fields.map((f) => f.name));
