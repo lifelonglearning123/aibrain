@@ -158,24 +158,15 @@ export default async function SettingsPage() {
       ],
     },
     {
-      title: "Loom — video knowledge (weekly auto-sync via Apify). Uses your Apify token above.",
+      title: "Gmail — reads Loom recap emails into the knowledge base (read-only). Then connect from Connected apps.",
       fields: [
-        { name: "LOOM_EMAIL", label: "Loom login email", kind: "text", placeholder: "you@macaws.ai" },
+        { name: "GMAIL_CLIENT_ID", label: "Client ID", kind: "text" },
+        { name: "GMAIL_CLIENT_SECRET", label: "Client secret", kind: "secret" },
         {
-          name: "LOOM_PASSWORD",
-          label: "Loom password — stored securely, used only to fetch your own transcripts",
-          kind: "secret",
-        },
-        {
-          name: "LOOM_COOKIE",
-          label: "OR Loom session cookie — use this instead of the password if you have 2FA",
-          kind: "secret",
-        },
-        {
-          name: "LOOM_APIFY_ACTOR",
-          label: "Apify actor (optional — leave blank to use the default we pick)",
+          name: "GMAIL_REDIRECT_URI",
+          label: "Redirect URI (must match your Google OAuth app exactly)",
           kind: "text",
-          placeholder: "automation-lab/loom-scraper",
+          placeholder: "https://aibrain.macaws.ai/api/integrations/gmail/callback",
         },
       ],
     },

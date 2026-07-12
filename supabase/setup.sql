@@ -273,6 +273,29 @@ do $$ begin
   execute 'create policy "read for authenticated" on content_feedback for select to authenticated using (true)';
 end $$;
 
+-- ── Knowledge documents (Loom recap emails → knowledge base) ────────────────
+create table if not exists knowledge_documents (
+  id          uuid primary key default gen_random_uuid(),
+  source      text not null default 'loom',
+  external_id text,
+  entity_key  text,
+  scope       text not null default 'shared',
+  title       text,
+  url         text,
+  summary     text,
+  content     text,
+  occurred_at timestamptz,
+  created_at  timestamptz not null default now(),
+  unique (source, external_id)
+);
+create index if not exists knowledge_documents_idx
+  on knowledge_documents(source, entity_key, occurred_at desc);
+alter table knowledge_documents enable row level security;
+do $$ begin
+  execute 'drop policy if exists "read for authenticated" on knowledge_documents';
+  execute 'create policy "read for authenticated" on knowledge_documents for select to authenticated using (true)';
+end $$;
+
 -- Master owner (edit the email to yours). Seeded here so re-running setup.sql can
 -- NEVER lock you out: this account always has full access to every company.
 insert into memberships (email, role, brands)

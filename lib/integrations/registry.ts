@@ -12,6 +12,7 @@ export type IntegrationCategory =
   | "crm"
   | "ads"
   | "research"
+  | "knowledge"
   | "ai"
   | "media"
   | "platform";
@@ -32,7 +33,7 @@ async function all(...names: string[]): Promise<boolean> {
 }
 
 export async function getIntegrations(): Promise<Integration[]> {
-  const [goalEngine, signal, stripe, quickbooks, xero, ghl, facebookAds, blotato, higgsfield, shotstack, apify, openai] =
+  const [goalEngine, signal, stripe, quickbooks, xero, ghl, facebookAds, gmail, blotato, higgsfield, shotstack, apify, openai] =
     await Promise.all([
       all("GOAL_ENGINE_URL", "GOAL_ENGINE_ENROLL_SECRET"),
       all("SIGNAL_SUPABASE_URL", "SIGNAL_SUPABASE_SERVICE_KEY"),
@@ -41,6 +42,7 @@ export async function getIntegrations(): Promise<Integration[]> {
       all("XERO_CLIENT_ID", "XERO_CLIENT_SECRET", "XERO_REDIRECT_URI"),
       anyCredWithPrefix("GHL_TOKEN__"),
       anyCredWithPrefix("FACEBOOK_ADS_TOKEN__"),
+      all("GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REDIRECT_URI"),
       credSet("BLOTATO_API_KEY"),
       credSet("HIGGSFIELD_API_KEY"),
       credSet("SHOTSTACK_API_KEY"),
@@ -131,6 +133,14 @@ export async function getIntegrations(): Promise<Integration[]> {
       category: "ads",
       configured: facebookAds,
       note: "Ad spend per brand → cost-per-lead & ROAS (Marketing view).",
+      internal: false,
+    },
+    {
+      key: "gmail",
+      name: "Gmail (Loom recaps)",
+      category: "knowledge",
+      configured: gmail,
+      note: "Reads Loom recap emails → meeting knowledge into the brain (read-only).",
       internal: false,
     },
     {
