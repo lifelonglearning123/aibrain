@@ -39,25 +39,45 @@ export default async function InsightsPage({
   const access = await getAccess();
   const [openai, signal] = await Promise.all([openaiConfig(), signalConfig()]);
 
-  let rows: Row[] = [];
+  let groups: { kind: string; label: string; count: number; items: Row[] }[] = [];
+  let totalCount = 0;
   let tableMissing = false;
   let lastRun: { created_at: string; calls_seen: number; insights_written: number } | null =
     null;
 
+  // Apply access + entity scoping to a brand_knowledge query.
+  // Shared lessons are owner-only; partners see only their brands.
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  function scoped(q: any): any {
+    if (access.isOwner) {
+      return filter === ALL ? q : q.or(`scope.eq.shared,entity_key.eq.${filter}`);
+    }
+    q = q.eq("scope", "brand");
+    if (filter !== ALL && access.brands.includes(filter as never)) return q.eq("entity_key", filter);
+    return q.in("entity_key", access.brands.length ? access.brands : ["__none__"]);
+  }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
   if (supa) {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("brand_knowledge")
-      .select("kind,text,converts,scope,entity_key,source")
-      .eq("status", "active");
-    if (error) tableMissing = true;
-    else {
-      rows = (data ?? []).filter((r) => {
-        // Cross-brand "shared" lessons are owner-only — partners see just their brand.
-        if (r.scope === "shared") return access.isOwner;
-        if (!r.entity_key || !access.brands.includes(r.entity_key as never)) return false;
-        return filter === ALL || r.entity_key === filter;
-      }) as Row[];
+    try {
+      groups = await Promise.all(
+        GROUPS.map(async (g) => {
+          const countRes = await scoped(
+            supabase.from("brand_knowledge").select("id", { count: "exact", head: true }).eq("status", "active").eq("kind", g.kind),
+          );
+          const dataRes = await scoped(
+            supabase.from("brand_knowledge").select("kind,text,converts,scope,entity_key,source").eq("status", "active").eq("kind", g.kind),
+          )
+            .order("converts", { ascending: false })
+            .limit(12);
+          if (countRes.error || dataRes.error) throw countRes.error ?? dataRes.error;
+          return { ...g, count: countRes.count ?? 0, items: (dataRes.data ?? []) as Row[] };
+        }),
+      );
+      totalCount = groups.reduce((s, g) => s + g.count, 0);
+    } catch {
+      tableMissing = true;
     }
     const { data: runs } = await supabase
       .from("learning_runs")
@@ -122,23 +142,29 @@ export default async function InsightsPage({
           <div>
             <h2 className="mb-2 text-sm font-semibold text-slate-700">
               Learned knowledge · {entityLabel(filter)}
+              {totalCount > 0 && (
+                <span className="ml-2 text-xs font-normal text-slate-400">
+                  {totalCount.toLocaleString()} insights
+                </span>
+              )}
             </h2>
-            {rows.length === 0 ? (
+            {totalCount === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-400">
                 Nothing learned yet — add a note or run learning to populate this.
               </div>
             ) : (
               <div className="grid gap-4 lg:grid-cols-2">
-                {GROUPS.map((g) => {
-                  const items = rows.filter((r) => r.kind === g.kind);
-                  if (items.length === 0) return null;
-                  return (
+                {groups.map((g) =>
+                  g.count === 0 ? null : (
                     <div key={g.kind} className="rounded-xl border border-slate-200 bg-white p-4">
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {g.label}
+                      <h3 className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <span>{g.label}</span>
+                        <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                          {g.count.toLocaleString()}
+                        </span>
                       </h3>
                       <ul className="space-y-2">
-                        {items.map((r, i) => (
+                        {g.items.map((r, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                             {r.converts && (
                               <span
@@ -155,9 +181,14 @@ export default async function InsightsPage({
                           </li>
                         ))}
                       </ul>
+                      {g.count > g.items.length && (
+                        <p className="mt-2 text-[10px] text-slate-400">
+                          Showing top {g.items.length} of {g.count.toLocaleString()} — ranked by conversion signal.
+                        </p>
+                      )}
                     </div>
-                  );
-                })}
+                  ),
+                )}
               </div>
             )}
           </div>

@@ -46,6 +46,26 @@ export async function chatJSON(system: string, user: string): Promise<unknown | 
   }
 }
 
+/** Embed text for semantic search (text-embedding-3-small, 1536 dims). Null if no key/error. */
+export async function embed(text: string): Promise<number[] | null> {
+  const { apiKey } = await openaiConfig();
+  if (!apiKey) return null;
+  try {
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "text-embedding-3-small", input: text.slice(0, 8000) }),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const v = data?.data?.[0]?.embedding;
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Plain-text chat (multi-turn) for conversational answers. Returns null if no key. */
 export async function chatText(
   messages: { role: string; content: string }[],

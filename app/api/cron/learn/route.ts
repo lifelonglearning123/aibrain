@@ -1,5 +1,6 @@
 import { runAllBrands } from "@/lib/ai/learn-run";
 import { buildAndStoreBrief } from "@/lib/ai/brief";
+import { embedMissingInsights } from "@/lib/embeddings";
 
 export const maxDuration = 300;
 
@@ -25,5 +26,12 @@ export async function GET(req: Request) {
   } catch {
     /* brief failure shouldn't fail the cron */
   }
-  return Response.json({ ...result, briefGenerated: briefOk }, { status: result.ok ? 200 : 500 });
+  // Keep semantic search current: embed any new insights lacking an embedding.
+  let embedded = 0;
+  try {
+    embedded = await embedMissingInsights(300);
+  } catch {
+    /* non-fatal */
+  }
+  return Response.json({ ...result, briefGenerated: briefOk, embedded }, { status: result.ok ? 200 : 500 });
 }

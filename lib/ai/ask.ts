@@ -1,4 +1,4 @@
-import { chatText, openaiConfig } from "./openai";
+import { chatText, embed, openaiConfig } from "./openai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
 
@@ -87,17 +87,32 @@ export async function answerQuestion(params: {
     brief = briefRes.data?.[0]?.content ?? null;
   }
 
-  // Insights: owners get everything; partners get only their brands' insights
-  // (no cross-brand "shared" lessons).
-  let insQuery = admin
-    .from("brand_knowledge")
-    .select("kind,text,converts,scope,entity_key")
-    .eq("status", "active");
-  if (!params.isOwner) {
-    insQuery = insQuery.eq("scope", "brand").in("entity_key", params.brands);
+  // Insights: retrieve only the most RELEVANT ones for this question via semantic
+  // search (there are thousands, so dumping them all would overflow the prompt).
+  // Access is enforced inside match_brand_knowledge (allowed_brands + include_shared).
+  let insights: unknown[] = [];
+  const qEmbedding = await embed(params.question);
+  if (qEmbedding) {
+    const { data } = await admin.rpc("match_brand_knowledge", {
+      query_embedding: qEmbedding,
+      match_count: 40,
+      allowed_brands: params.brands,
+      include_shared: params.isOwner,
+    });
+    insights = data ?? [];
   }
-  const insRes = await insQuery;
-  const insights = insRes.data ?? [];
+  // Fallback (embeddings unavailable or not backfilled yet): top insights by
+  // conversion signal, access-scoped, so Ask still works.
+  if (insights.length === 0) {
+    let q = admin
+      .from("brand_knowledge")
+      .select("kind,text,converts,scope,entity_key")
+      .eq("status", "active")
+      .order("converts", { ascending: false })
+      .limit(40);
+    if (!params.isOwner) q = q.eq("scope", "brand").in("entity_key", params.brands);
+    insights = (await q).data ?? [];
+  }
 
   const context = buildContext(brief, insights);
 
