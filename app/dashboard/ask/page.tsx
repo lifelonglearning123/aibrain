@@ -12,8 +12,8 @@ export default async function AskPage() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Ask your data</h1>
         <p className="mt-0.5 text-sm text-slate-500">
-          Interrogate your business — answered from your live brief and everything the brain has
-          learned.
+          Interrogate your business — it queries live Stripe, pipeline and accounting data on
+          demand, then answers with the real numbers.
         </p>
       </div>
       <AskChat ready={ready} />

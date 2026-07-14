@@ -53,6 +53,67 @@ function monthlyCents(
   return (perCycle * factor) / (intervalCount || 1);
 }
 
+export interface SubscriptionLine {
+  customer: string;
+  plan: string;
+  amount: number; // major units, per interval
+  interval: string;
+  status: string;
+  currency: string;
+}
+
+/**
+ * Live list of active subscriptions with per-customer plan + amount — the
+ * detail Ask needs for a "subscriber-level MRR breakdown". Read-only.
+ */
+export async function listBrandSubscriptions(
+  entity: EntityKey,
+): Promise<{ subs: SubscriptionLine[]; count: number; error?: string }> {
+  const key = await stripeKeyForEntity(entity);
+  if (!key) return { subs: [], count: 0, error: "not_configured" };
+  const stripe = new Stripe(key, { timeout: 15000, maxNetworkRetries: 1 });
+  try {
+    const subs: SubscriptionLine[] = [];
+    let startingAfter: string | undefined;
+    for (let page = 0; page < 5; page++) {
+      const res = await stripe.subscriptions.list({
+        status: "active",
+        limit: 100,
+        expand: ["data.customer"],
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+      for (const sub of res.data) {
+        const cust = sub.customer as Stripe.Customer | Stripe.DeletedCustomer | string;
+        const customer =
+          typeof cust === "object" && cust
+            ? ("name" in cust && cust.name) || ("email" in cust && cust.email) || cust.id
+            : String(cust);
+        for (const item of sub.items.data) {
+          const price = item.price;
+          if (price.unit_amount == null || !price.recurring) continue; // skip metered/one-off
+          const amountMinor = price.unit_amount * (item.quantity ?? 1);
+          const plan =
+            price.nickname ||
+            `${(amountMinor / 100).toFixed(2)} ${price.currency.toUpperCase()}/${price.recurring.interval}`;
+          subs.push({
+            customer: String(customer),
+            plan,
+            amount: amountMinor / 100,
+            interval: price.recurring.interval,
+            status: sub.status,
+            currency: price.currency.toUpperCase(),
+          });
+        }
+      }
+      if (!res.has_more || res.data.length === 0) break;
+      startingAfter = res.data[res.data.length - 1]?.id;
+    }
+    return { subs, count: subs.length };
+  } catch (e) {
+    return { subs: [], count: 0, error: e instanceof Error ? e.message : "stripe_error" };
+  }
+}
+
 export async function getBrandRevenue(entity: EntityKey): Promise<BrandRevenue> {
   const name = ENTITIES.find((e) => e.key === entity)?.name ?? entity;
   const key = await stripeKeyForEntity(entity);

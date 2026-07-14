@@ -230,6 +230,64 @@ export async function getBrandMarketing(entity: EntityKey): Promise<BrandMarketi
   }
 }
 
+export interface DealLine {
+  name: string;
+  value: number; // major units
+  stage: string;
+  contact: string | null;
+}
+
+/** Top open opportunities by value for a brand — the detail behind "biggest deals". */
+export async function listTopDeals(
+  entity: EntityKey,
+  limit = 10,
+): Promise<{ deals: DealLine[]; currency: string; error?: string }> {
+  const cfg = await ghlConfigForEntity(entity);
+  if (!cfg.configured || !cfg.token || !cfg.locationId) {
+    return { deals: [], currency: cfg.currency, error: "not_configured" };
+  }
+  try {
+    const stageNames = new Map<string, string>();
+    const pipeRes = await ghlFetch(
+      cfg.token,
+      `/opportunities/pipelines?locationId=${encodeURIComponent(cfg.locationId)}`,
+    );
+    if (pipeRes.ok) {
+      const pj: any = await pipeRes.json();
+      for (const p of pj?.pipelines ?? [])
+        for (const s of p?.stages ?? []) if (s?.id) stageNames.set(s.id, s.name ?? "Unnamed");
+    }
+
+    const open: DealLine[] = [];
+    for (let page = 1; page <= 10; page++) {
+      const res = await ghlFetch(
+        cfg.token,
+        `/opportunities/search?location_id=${encodeURIComponent(cfg.locationId)}&limit=100&page=${page}`,
+      );
+      if (!res.ok) {
+        if (page === 1) return { deals: [], currency: cfg.currency, error: `http_${res.status}` };
+        break;
+      }
+      const json: any = await res.json();
+      const opps: any[] = json?.opportunities ?? [];
+      for (const o of opps) {
+        if (String(o?.status ?? "").toLowerCase() !== "open") continue;
+        open.push({
+          name: o?.name || o?.contact?.name || "Unnamed deal",
+          value: (Number(o?.monetaryValue) || 0),
+          stage: stageNames.get(o?.pipelineStageId) ?? "Unstaged",
+          contact: o?.contact?.name ?? null,
+        });
+      }
+      if (opps.length < 100) break;
+    }
+    open.sort((a, b) => b.value - a.value);
+    return { deals: open.slice(0, Math.max(1, Math.min(limit, 50))), currency: cfg.currency };
+  } catch (e) {
+    return { deals: [], currency: cfg.currency, error: e instanceof Error ? e.message : "ghl_error" };
+  }
+}
+
 // ── Learning sources: won-deal contacts (conversion signal) + conversations ──
 
 /** Contact ids that have a WON opportunity — used as the conversion signal. */

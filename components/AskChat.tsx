@@ -5,14 +5,31 @@ import { useRef, useState } from "react";
 interface Msg {
   role: "user" | "assistant";
   content: string;
+  sources?: string[];
 }
 
 const STARTERS = [
-  "Why isn't my pipeline converting?",
-  "Which brand should I focus on this week?",
+  "Give me a subscriber-level MRR breakdown",
+  "What are my biggest open deals right now?",
+  "What's my profit over the last 12 months?",
   "What are customers objecting to most?",
-  "What's my best converting angle right now?",
 ];
+
+/** Map the tools the model called to friendly, de-duplicated source labels. */
+const SOURCE_LABEL: Record<string, string> = {
+  get_revenue: "Stripe",
+  list_subscriptions: "Stripe subscriptions",
+  get_pipeline: "GHL pipeline",
+  list_top_deals: "GHL deals",
+  get_accounting: "Xero / QuickBooks",
+  get_marketing: "Facebook Ads + GHL",
+  search_knowledge: "Learned insights",
+  get_daily_brief: "Daily brief",
+};
+function sourceLabels(tools?: string[]): string[] {
+  if (!Array.isArray(tools)) return [];
+  return [...new Set(tools.map((t) => SOURCE_LABEL[t] ?? t))];
+}
 
 export function AskChat({ ready }: { ready: boolean }) {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -38,7 +55,10 @@ export function AskChat({ ready }: { ready: boolean }) {
       });
       const data = await res.json();
       if (data.ok) {
-        setMessages([...next, { role: "assistant", content: data.answer }]);
+        setMessages([
+          ...next,
+          { role: "assistant", content: data.answer, sources: sourceLabels(data.toolsUsed) },
+        ]);
       } else {
         setError(data.error ?? "failed");
       }
@@ -56,8 +76,8 @@ export function AskChat({ ready }: { ready: boolean }) {
         {messages.length === 0 ? (
           <div className="mx-auto max-w-md pt-8 text-center">
             <p className="text-sm text-slate-500">
-              Ask anything about your business — it answers from your live brief and everything
-              it&apos;s learned.
+              Ask anything about your business — it pulls live numbers from Stripe, your pipeline
+              and your accounts, plus everything it&apos;s learned from calls and emails.
             </p>
             <div className="mt-4 flex flex-col gap-2">
               {STARTERS.map((s) => (
@@ -75,14 +95,21 @@ export function AskChat({ ready }: { ready: boolean }) {
         ) : (
           messages.map((m, i) => (
             <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-              <div
-                className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${
-                  m.role === "user"
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-200 bg-slate-50 text-slate-800"
-                }`}
-              >
-                {m.content}
+              <div className={m.role === "user" ? "max-w-[80%]" : "max-w-[80%] space-y-1"}>
+                <div
+                  className={`whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${
+                    m.role === "user"
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-slate-50 text-slate-800"
+                  }`}
+                >
+                  {m.content}
+                </div>
+                {m.role === "assistant" && m.sources && m.sources.length > 0 && (
+                  <p className="px-1 text-[11px] text-slate-400">
+                    Live sources: {m.sources.join(" · ")}
+                  </p>
+                )}
               </div>
             </div>
           ))
