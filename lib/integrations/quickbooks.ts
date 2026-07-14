@@ -147,6 +147,12 @@ export interface BrandFinancials {
   netCents: number;
   currency: string;
   error?: string;
+  /** Cash actually received on sales invoices in the period (Xero: truer than a miscoded P&L). */
+  cashReceivedCents?: number;
+  /** Sales-invoice balances still owed to the business. */
+  outstandingCents?: number;
+  /** How the headline income was derived, when it isn't the plain P&L income line. */
+  basisNote?: string;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

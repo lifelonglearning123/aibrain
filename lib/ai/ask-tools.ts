@@ -228,6 +228,9 @@ export async function runTool(name: string, args: any, ctx: AskCtx): Promise<any
         expenses: money(f.expensesCents),
         netProfit: money(f.netCents),
         currency: f.currency,
+        ...(f.cashReceivedCents != null ? { cashReceived: money(f.cashReceivedCents) } : {}),
+        ...(f.outstandingCents != null ? { outstandingOwed: money(f.outstandingCents) } : {}),
+        ...(f.basisNote ? { basis: f.basisNote } : {}),
         ...(f.error ? { note: f.error } : {}),
       };
     }

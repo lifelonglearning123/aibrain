@@ -202,6 +202,52 @@ function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Sum sales invoices (ACCREC) dated in the last 12 months → cash actually
+ * received (AmountPaid) and still owed (AmountDue). This is the truthful
+ * "money in" when the P&L income line is miscoded. Returns null if invoices
+ * can't be read (e.g. the connection predates the invoices.read scope → 403),
+ * so the caller can fall back to the P&L.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function fetchInvoiceCash(
+  accessToken: string,
+  tenantId: string,
+  from: Date,
+): Promise<{ cashReceivedCents: number; outstandingCents: number } | null> {
+  const where = `Type=="ACCREC"&&Date>=DateTime(${from.getUTCFullYear()},${from.getUTCMonth() + 1},${from.getUTCDate()})`;
+  let received = 0;
+  let due = 0;
+  try {
+    for (let page = 1; page <= 15; page++) {
+      const url = `${API_BASE}/Invoices?where=${encodeURIComponent(where)}&page=${page}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Xero-tenant-id": tenantId,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      });
+      if (!res.ok) return null; // 403 = scope not granted yet → caller falls back
+      const json: any = await res.json();
+      const invoices: any[] = json?.Invoices ?? [];
+      for (const inv of invoices) {
+        received += Number(inv?.AmountPaid) || 0;
+        due += Number(inv?.AmountDue) || 0;
+      }
+      if (invoices.length < 100) break;
+    }
+    return {
+      cashReceivedCents: Math.round(received * 100),
+      outstandingCents: Math.round(due * 100),
+    };
+  } catch {
+    return null;
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinancials> {
   const name = ENTITIES.find((e) => e.key === entity)?.name ?? entity;
   const currencyOverride = await cred(
@@ -220,26 +266,55 @@ export async function getBrandFinancials(entity: EntityKey): Promise<BrandFinanc
   const tok = await getValidAccessToken(entity);
   if (!tok) return { ...base, error: "not_connected" };
 
-  const from = ymd(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000));
+  const fromDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+  const from = ymd(fromDate);
   const to = ymd(new Date());
   const url = `${API_BASE}/Reports/ProfitAndLoss?fromDate=${from}&toDate=${to}`;
 
   try {
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${tok.accessToken}`,
-        "Xero-tenant-id": tok.tenantId,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-    if (!res.ok) return { ...base, error: `http_${res.status}` };
-    const parsed = parseProfitAndLoss(await res.json());
+    // P&L (expenses always come from here; income only as a fallback) + invoices
+    // (the real cash received) in parallel.
+    const [plRes, invoices] = await Promise.all([
+      fetch(url, {
+        headers: {
+          Authorization: `Bearer ${tok.accessToken}`,
+          "Xero-tenant-id": tok.tenantId,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }),
+      fetchInvoiceCash(tok.accessToken, tok.tenantId, fromDate),
+    ]);
+    if (!plRes.ok) return { ...base, error: `http_${plRes.status}` };
+    const parsed = parseProfitAndLoss(await plRes.json());
+
+    // Prefer actual invoice cash for income (the P&L income line is unreliable
+    // when invoices are miscoded). Fall back to the P&L income if invoices can't
+    // be read yet (connection predates the invoices.read scope → reconnect).
+    const useInvoices =
+      invoices != null && invoices.cashReceivedCents > 0;
+    const incomeCents = useInvoices ? invoices!.cashReceivedCents : parsed.incomeCents;
+    const netCents = useInvoices ? incomeCents - parsed.expensesCents : parsed.netCents;
+
     return {
       ...base,
-      incomeCents: parsed.incomeCents,
+      incomeCents,
       expensesCents: parsed.expensesCents,
-      netCents: parsed.netCents,
+      netCents,
+      ...(invoices
+        ? {
+            cashReceivedCents: invoices.cashReceivedCents,
+            outstandingCents: invoices.outstandingCents,
+          }
+        : {}),
+      ...(useInvoices
+        ? {
+            basisNote:
+              "Income = cash received on sales invoices (Xero P&L income line is miscoded and understates revenue); expenses from the P&L.",
+          }
+        : invoices == null
+          ? { basisNote: "Income from the P&L — reconnect Xero to read invoices for a truer figure." }
+          : {}),
     };
   } catch (e) {
     return { ...base, error: e instanceof Error ? e.message : "xero_error" };
