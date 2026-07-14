@@ -146,12 +146,18 @@ export async function runTool(name: string, args: any, ctx: AskCtx): Promise<any
       const brand = resolveBrand(args?.brand, ctx);
       if (!brand) return DENIED;
       const r = await getBrandRevenue(brand);
+      const compedSubs = r.activeSubs - r.payingSubs;
       return {
         brand,
-        mrr: money(r.mrrCents),
+        mrr: money(r.mrrCents), // NET of discounts — the real recurring revenue
+        grossMrrAtListPrice: money(r.grossMrrCents),
+        payingSubscriptions: r.payingSubs,
         activeSubscriptions: r.activeSubs,
-        revenueLast30d: money(r.revenue30dCents),
+        freeOrCompedSubscriptions: compedSubs,
+        revenueLast30d: money(r.revenue30dCents), // actual cash collected
         currency: r.currency,
+        basis:
+          "MRR is net of coupons: 100%-off / test subscriptions count as £0. 'revenueLast30d' is cash actually collected. Cite the net MRR and paying count, not the gross.",
         ...(r.error ? { note: r.error } : {}),
       };
     }
@@ -160,20 +166,28 @@ export async function runTool(name: string, args: any, ctx: AskCtx): Promise<any
       const brand = resolveBrand(args?.brand, ctx);
       if (!brand) return DENIED;
       const r = await listBrandSubscriptions(brand);
-      const total = r.subs.reduce((s, x) => s + (x.interval === "year" ? x.amount / 12 : x.amount), 0);
+      const toMonthly = (x: { amount: number; interval: string }) =>
+        x.interval === "year" ? x.amount / 12 : x.amount;
+      const paying = r.subs.filter((s) => !s.free);
+      const netMrr = paying.reduce((s, x) => s + toMonthly(x), 0);
       return {
         brand,
         activeSubscriptions: r.count,
-        approxMrr: Math.round(total * 100) / 100,
+        payingSubscriptions: paying.length,
+        freeOrCompedSubscriptions: r.count - paying.length,
+        netMrr: Math.round(netMrr * 100) / 100, // real MRR, discounts applied
         currency: r.subs[0]?.currency ?? "GBP",
+        note: "Amounts are NET of discounts. 'free' subscriptions are 100%-off / test accounts paying £0 — exclude them from revenue.",
         subscriptions: r.subs.slice(0, 80).map((s) => ({
           customer: s.customer,
           plan: s.plan,
-          amount: s.amount,
+          pays: s.amount,
+          listPrice: s.listPrice,
           interval: s.interval,
+          ...(s.free ? { free: true } : s.discounted ? { discounted: true } : {}),
         })),
         ...(r.subs.length > 80 ? { truncated: `showing 80 of ${r.subs.length}` } : {}),
-        ...(r.error ? { note: r.error } : {}),
+        ...(r.error ? { errorNote: r.error } : {}),
       };
     }
 

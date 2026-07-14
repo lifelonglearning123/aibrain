@@ -46,8 +46,9 @@ async function gatherBrand(
     const r = await getBrandRevenue(entity);
     if (!r.error) {
       revenue30 = r.revenue30dCents;
+      const comped = r.activeSubs - r.payingSubs;
       parts.push(
-        `Revenue 30d ${formatMoney(r.revenue30dCents, r.currency)}, MRR ${formatMoney(r.mrrCents, r.currency)}, ${r.activeSubs} active subs`,
+        `Revenue 30d ${formatMoney(r.revenue30dCents, r.currency)}, MRR ${formatMoney(r.mrrCents, r.currency)} (net of discounts), ${r.payingSubs} paying subs${comped > 0 ? ` (+${comped} free/comped)` : ""}`,
       );
     }
   }

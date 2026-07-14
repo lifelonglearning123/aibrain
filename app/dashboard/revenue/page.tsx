@@ -73,6 +73,10 @@ export default async function RevenuePage({
     (s, r) => s + (r.stripe && !r.stripe.error ? r.stripe.mrrCents : 0),
     0,
   );
+  const totalPaying = shown.reduce(
+    (s, r) => s + (r.stripe && !r.stripe.error ? r.stripe.payingSubs : 0),
+    0,
+  );
   const totalRev = shown.reduce(
     (s, r) => s + (r.stripe && !r.stripe.error ? r.stripe.revenue30dCents : 0),
     0,
@@ -93,7 +97,7 @@ export default async function RevenuePage({
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="MRR" value={formatMoney(totalMrr, currency)} hint="Stripe · active subs" accent="#2563eb" />
+        <StatCard label="MRR" value={formatMoney(totalMrr, currency)} hint={`Net of discounts · ${totalPaying} paying subs`} accent="#2563eb" />
         <StatCard label="Revenue (30d)" value={formatMoney(totalRev, currency)} hint="Stripe · succeeded charges" accent="#10b981" />
         <StatCard label="Expenses (12mo)" value={acct.anyConfigured ? formatMoney(totalExp, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L · 12 months" : "Connect accounting"} accent="#ef4444" />
         <StatCard label="Net (12mo)" value={acct.anyConfigured ? formatMoney(totalNet, currency) : "—"} hint={acct.anyConfigured ? "Accounting P&L · 12 months" : "From accounting"} accent="#f59e0b" />
