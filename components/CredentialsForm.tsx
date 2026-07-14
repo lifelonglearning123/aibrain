@@ -28,6 +28,7 @@ export function CredentialsForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function set(name: string, v: string) {
     setValues((prev) => ({ ...prev, [name]: v }));
@@ -41,6 +42,7 @@ export function CredentialsForm({
 
     setSaving(true);
     setError(null);
+    setNotice(null);
     try {
       const res = await fetch("/api/settings/save", {
         method: "POST",
@@ -52,6 +54,11 @@ export function CredentialsForm({
         setSaved(true);
         setValues({});
         router.refresh();
+        if (Array.isArray(data.rejected) && data.rejected.length) {
+          setNotice(
+            `Ignored an auto-filled/invalid value for: ${data.rejected.join(", ")} (your saved key was kept).`,
+          );
+        }
       } else {
         setError(data.error ?? "save_failed");
       }
@@ -91,7 +98,12 @@ export function CredentialsForm({
                 </label>
                 <input
                   type={f.kind === "secret" ? "password" : "text"}
-                  autoComplete="off"
+                  // Stop browser/password-manager autofill from silently injecting
+                  // (and then saving) the wrong value into secret fields.
+                  autoComplete={f.kind === "secret" ? "new-password" : "off"}
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
                   value={values[f.name] ?? ""}
                   onChange={(e) => set(f.name, e.target.value)}
                   placeholder={
@@ -115,6 +127,7 @@ export function CredentialsForm({
         </button>
         {saved && <span className="text-sm text-emerald-600">Saved ✓</span>}
         {error && <span className="text-sm text-red-600">Error: {error}</span>}
+        {notice && <span className="text-sm text-amber-600">{notice}</span>}
       </div>
       <p className="text-xs text-slate-400">
         After saving, open <strong>Connected apps</strong> to confirm the green

@@ -23,6 +23,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid_values" }, { status: 400 });
   }
 
+  // Guard against browser/password-manager autofill silently overwriting a secret
+  // with a wrong value: reject any known-format key that doesn't match its prefix.
+  const REQUIRED_PREFIX: Record<string, string[]> = {
+    OPENAI_API_KEY: ["sk-"],
+  };
+  const rejected: string[] = [];
+  for (const [name, prefixes] of Object.entries(REQUIRED_PREFIX)) {
+    const v = values[name];
+    if (typeof v === "string" && v.trim() && !prefixes.some((p) => v.trim().startsWith(p))) {
+      delete values[name];
+      rejected.push(name);
+    }
+  }
+
   const ok = await saveCredentials(values);
-  return NextResponse.json({ ok });
+  return NextResponse.json({ ok, rejected });
 }
