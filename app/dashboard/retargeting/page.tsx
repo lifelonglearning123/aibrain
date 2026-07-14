@@ -4,7 +4,8 @@ import { EnrollTester } from "@/components/EnrollTester";
 import { SequenceDrafter } from "@/components/SequenceDrafter";
 import { goalEngineConfig } from "@/lib/integrations/goal-engine";
 import { openaiConfig } from "@/lib/ai/openai";
-import { resolveEntity, type EntityKey } from "@/lib/entities";
+import { getFunnelWinners } from "@/lib/ai/funnel-learning";
+import { resolveEntity, ENTITIES, type EntityKey } from "@/lib/entities";
 import { getAccess } from "@/lib/access";
 
 export default async function RetargetingPage({
@@ -21,6 +22,8 @@ export default async function RetargetingPage({
   const initialEntity: EntityKey = allowedBrands.includes(filter as EntityKey)
     ? (filter as EntityKey)
     : allowedBrands[0];
+  const winners = await getFunnelWinners(allowedBrands);
+  const brandName = (k: string) => ENTITIES.find((e) => e.key === k)?.name ?? k;
 
   return (
     <div className="space-y-6">
@@ -54,23 +57,67 @@ export default async function RetargetingPage({
         </span>
       </div>
 
-      {/* How the link works */}
+      {/* How the loop works */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
-        <h3 className="text-sm font-semibold text-slate-700">How this link works</h3>
+        <h3 className="text-sm font-semibold text-slate-700">
+          The learning loop: Brain thinks, Goal Engine acts
+        </h3>
         <ul className="mt-2 space-y-1.5 text-sm text-slate-500">
           <li>
-            • The Brain <strong>triggers</strong> Goal Engine — it never edits its
-            code, so improving Goal Engine can&apos;t break this.
+            • <strong>Brain → Goal Engine (knowledge):</strong> Goal Engine pulls
+            your learned angles, objections &amp; taught facts from{" "}
+            <code className="rounded bg-slate-100 px-1 text-xs">GET /api/knowledge/&lt;brand&gt;</code>{" "}
+            to ground every sequence in what actually wins deals.
           </li>
           <li>
-            • Each brand maps to a Goal Engine goal/tenant; enrolling a contact
-            starts its multi-channel flow (SMS · email · WhatsApp) into GHL.
+            • <strong>Execution:</strong> enrolling a contact starts its
+            multi-channel flow (SMS · email · WhatsApp) into GHL. The Brain
+            triggers Goal Engine but never edits it, so improving one can&apos;t
+            break the other.
           </li>
           <li>
-            • Outcomes (replies, conversions) flow back and will appear here next
-            to your pipeline and revenue.
+            • <strong>Goal Engine → Brain (learning):</strong> outcomes are
+            reported to{" "}
+            <code className="rounded bg-slate-100 px-1 text-xs">POST /api/retargeting/outcome</code>.
+            Angles that repeatedly convert become <em>winning angles</em> that
+            feed the next draft — the funnel improves itself.
           </li>
         </ul>
+      </div>
+
+      {/* What the funnel has learned */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-700">
+            What the funnel has learned
+          </h3>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+            self-improving
+          </span>
+        </div>
+        {winners.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">
+            No proven angles yet. Once Goal Engine reports outcomes, angles that
+            convert (≥3 reports, ≥50% win rate) are promoted here and start
+            leading your drafts automatically.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-1.5 text-sm">
+            {winners.map((w, i) => (
+              <li key={i} className="flex items-center justify-between gap-3">
+                <span className="text-slate-700">
+                  <span className="mr-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                    {brandName(w.brand)}
+                  </span>
+                  {w.angle}
+                </span>
+                <span className="shrink-0 text-xs text-slate-400">
+                  {w.evidence} signal{w.evidence === 1 ? "" : "s"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <SequenceDrafter
