@@ -32,19 +32,28 @@ export async function getBrandKnowledge(
   if (!admin) return EMPTY;
   const { data } = await admin
     .from("brand_knowledge")
-    .select("kind,text,scope,entity_key,converts")
+    .select("kind,text,scope,entity_key,converts,evidence_count")
     .eq("status", "active");
   if (!data) return EMPTY;
 
   const rows = (data as any[]).filter(
     (r) => (includeShared && r.scope === "shared") || r.entity_key === entity,
   );
-  const pick = (kind: string) =>
-    rows
+  const pick = (kind: string) => {
+    const seen = new Set<string>();
+    return rows
       .filter((r) => r.kind === kind)
-      .sort((a, b) => (b.converts ? 1 : 0) - (a.converts ? 1 : 0))
+      // Converters first, then the strongest evidence (funnel-proven winners have
+      // the most) — so angles proven by real outcomes lead the list.
+      .sort(
+        (a, b) =>
+          (b.converts ? 1 : 0) - (a.converts ? 1 : 0) ||
+          (Number(b.evidence_count) || 0) - (Number(a.evidence_count) || 0),
+      )
       .map((r) => String(r.text))
+      .filter((t) => (seen.has(t) ? false : (seen.add(t), true)))
       .slice(0, 8);
+  };
 
   return {
     painPoints: pick("pain_point"),
