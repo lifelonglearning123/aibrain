@@ -2,7 +2,11 @@ import { ENTITIES, type EntityKey } from "@/lib/entities";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embed } from "./openai";
 import type { ToolDef } from "./openai";
-import { getBrandRevenue, listBrandSubscriptions } from "@/lib/integrations/stripe";
+import {
+  getBrandRevenue,
+  listBrandSubscriptions,
+  getBrandRevenueMix,
+} from "@/lib/integrations/stripe";
 import { getBrandPipeline, listTopDeals, getBrandMarketing } from "@/lib/integrations/ghl";
 import { getBrandFinancials } from "@/lib/integrations/accounting";
 import { getBrandAdSpend } from "@/lib/integrations/facebook-ads";
@@ -69,6 +73,17 @@ export function buildTools(ctx: AskCtx): ToolDef[] {
         description:
           "The individual active Stripe subscriptions for a company — customer, plan, amount and billing interval. Use this for a subscriber-level MRR breakdown or 'who is paying'.",
         parameters: withBrand(),
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_revenue_mix",
+        description:
+          "How much cash a company actually COLLECTED in a window, split into true recurring subscriptions vs manual/GHL invoices vs ad-hoc one-offs, with a per-item breakdown. Use for 'recurring vs one-off', 'where did my revenue come from', 'what's transactional'. Note: monthly services billed as manual GHL invoices show under 'invoice', not 'subscription' — flag these as recurring-in-disguise.",
+        parameters: withBrand({
+          days: { type: "integer", description: "Look-back window in days (default 30, e.g. 90)." },
+        }),
       },
     },
     {
@@ -188,6 +203,37 @@ export async function runTool(name: string, args: any, ctx: AskCtx): Promise<any
         })),
         ...(r.subs.length > 80 ? { truncated: `showing 80 of ${r.subs.length}` } : {}),
         ...(r.error ? { errorNote: r.error } : {}),
+      };
+    }
+
+    case "get_revenue_mix": {
+      const brand = resolveBrand(args?.brand, ctx);
+      if (!brand) return DENIED;
+      const days = Number(args?.days) > 0 ? Math.min(Number(args.days), 365) : 30;
+      const m = await getBrandRevenueMix(brand, days);
+      const transactional = m.invoiceCents + m.otherCents;
+      const total = m.recurringCents + transactional;
+      const pct = (c: number) => (total > 0 ? Math.round((c / total) * 100) : 0);
+      return {
+        brand,
+        windowDays: m.windowDays,
+        currency: m.currency,
+        totalCollected: money(total),
+        recurringSubscriptions: money(m.recurringCents),
+        manualInvoices: money(m.invoiceCents),
+        otherOneOff: money(m.otherCents),
+        recurringPct: pct(m.recurringCents),
+        transactionalPct: pct(transactional),
+        chargeCount: m.chargeCount,
+        breakdown: m.items.map((i) => ({
+          item: i.label,
+          type: i.kind,
+          amount: money(i.cents),
+          payments: i.count,
+        })),
+        insight:
+          "Only 'subscription' is guaranteed recurring. 'invoice' items are often monthly services billed manually through GHL — recurring revenue hiding outside MRR. Recommend converting those to real subscriptions.",
+        ...(m.error ? { note: m.error } : {}),
       };
     }
 

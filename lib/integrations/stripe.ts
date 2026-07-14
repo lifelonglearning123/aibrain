@@ -264,3 +264,130 @@ export async function getBrandRevenue(entity: EntityKey): Promise<BrandRevenue> 
     };
   }
 }
+
+export interface RevenueMixItem {
+  label: string;
+  kind: "subscription" | "invoice" | "other";
+  cents: number;
+  count: number;
+}
+export interface RevenueMix {
+  entityKey: EntityKey;
+  name: string;
+  currency: string;
+  windowDays: number;
+  chargeCount: number;
+  /** Cash from true Stripe subscriptions (genuinely recurring). */
+  recurringCents: number;
+  /** Cash from manual / GHL invoices (often recurring services billed one-off). */
+  invoiceCents: number;
+  /** Ad-hoc payments with no invoice/subscription. */
+  otherCents: number;
+  items: RevenueMixItem[];
+  error?: string;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function cleanLabel(s: string): string {
+  return String(s || "")
+    .replace(/^\d+\s*×\s*/, "")
+    .replace(/\s*\(at .*$/, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+}
+
+/**
+ * Recurring-vs-transactional revenue mix from cash actually collected in a
+ * window. Classifies each succeeded charge as a true Stripe subscription, a
+ * manual/GHL invoice (recurring services are often billed this way, so they
+ * hide from MRR), or other ad-hoc. Read-only.
+ */
+export async function getBrandRevenueMix(
+  entity: EntityKey,
+  windowDays = 30,
+): Promise<RevenueMix> {
+  const name = ENTITIES.find((e) => e.key === entity)?.name ?? entity;
+  const base: RevenueMix = {
+    entityKey: entity,
+    name,
+    currency: "GBP",
+    windowDays,
+    chargeCount: 0,
+    recurringCents: 0,
+    invoiceCents: 0,
+    otherCents: 0,
+    items: [],
+  };
+  const key = await stripeKeyForEntity(entity);
+  if (!key) return { ...base, error: "not_configured" };
+  const stripe = new Stripe(key, { timeout: 15000, maxNetworkRetries: 1 });
+
+  const since = Math.floor((Date.now() - windowDays * 24 * 60 * 60 * 1000) / 1000);
+  const agg = new Map<string, RevenueMixItem>();
+  let currency = "";
+  try {
+    let startingAfter: string | undefined;
+    for (let page = 0; page < 20; page++) {
+      const res = await stripe.charges.list({
+        created: { gte: since },
+        limit: 100,
+        expand: ["data.invoice"],
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+      for (const charge of res.data) {
+        if (!charge.paid || charge.status !== "succeeded") continue;
+        const net = charge.amount - (charge.amount_refunded ?? 0);
+        if (net <= 0) continue;
+        if (!currency) currency = charge.currency;
+        base.chargeCount += 1;
+
+        const meta = (charge.metadata ?? {}) as Record<string, string>;
+        const inv = (charge as any).invoice; // expanded object or id (not in pinned types)
+        const invObj = inv && typeof inv === "object" ? inv : null;
+        const desc = String(charge.description ?? "");
+
+        let kind: RevenueMixItem["kind"];
+        let label: string;
+        if (inv) {
+          // Any Stripe-native invoice = subscription / Stripe invoicing (recurring).
+          kind = "subscription";
+          label =
+            cleanLabel(invObj?.lines?.data?.[0]?.description) ||
+            cleanLabel(desc) ||
+            "Subscription";
+          base.recurringCents += net;
+        } else if (meta.invoiceNumber || meta.invoiceId || /payment for invoice/i.test(desc)) {
+          kind = "invoice";
+          label = meta.invoiceNumber ? `Invoice ${meta.invoiceNumber}` : "Manual invoice";
+          base.invoiceCents += net;
+        } else {
+          kind = "other";
+          label = cleanLabel(desc) || "One-off payment";
+          base.otherCents += net;
+        }
+
+        const k = `${kind}::${label}`;
+        const existing = agg.get(k);
+        if (existing) {
+          existing.cents += net;
+          existing.count += 1;
+        } else {
+          agg.set(k, { label, kind, cents: net, count: 1 });
+        }
+      }
+      if (!res.has_more || res.data.length === 0) break;
+      startingAfter = res.data[res.data.length - 1]?.id;
+    }
+
+    return {
+      ...base,
+      currency: (currency || "gbp").toUpperCase(),
+      items: [...agg.values()].sort((a, b) => b.cents - a.cents),
+    };
+  } catch (e) {
+    return { ...base, error: e instanceof Error ? e.message : "stripe_error" };
+  }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */

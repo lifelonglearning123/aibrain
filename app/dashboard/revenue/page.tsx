@@ -2,7 +2,11 @@ import { ViewHeader } from "@/components/ViewHeader";
 import { StatCard } from "@/components/StatCard";
 import { EmptyState } from "@/components/EmptyState";
 import { ENTITIES, resolveEntity } from "@/lib/entities";
-import { configuredStripeEntities, getBrandRevenue } from "@/lib/integrations/stripe";
+import {
+  configuredStripeEntities,
+  getBrandRevenue,
+  getBrandRevenueMix,
+} from "@/lib/integrations/stripe";
 import { accountingConfig, getBrandFinancials } from "@/lib/integrations/accounting";
 import { getAccess, scopeEntities } from "@/lib/access";
 import { formatMoney } from "@/lib/money";
@@ -56,10 +60,12 @@ export default async function RevenuePage({
   const rows = await Promise.all(
     scope.map(async (key) => {
       const name = ENTITIES.find((e) => e.key === key)!.name;
-      const stripe = stripeSet.has(key) ? await getBrandRevenue(key) : null;
+      const [stripe, mix] = stripeSet.has(key)
+        ? await Promise.all([getBrandRevenue(key), getBrandRevenueMix(key, 30)])
+        : [null, null];
       const financials = acct.anyConfigured ? await getBrandFinancials(key) : null;
       const qbData = financials && !financials.error ? financials : null;
-      return { key, name, stripe, qbData, hasStripeKey: stripeSet.has(key) };
+      return { key, name, stripe, mix, qbData, hasStripeKey: stripeSet.has(key) };
     }),
   );
 
@@ -83,6 +89,18 @@ export default async function RevenuePage({
   );
   const totalExp = shown.reduce((s, r) => s + (r.qbData ? r.qbData.expensesCents : 0), 0);
   const totalNet = shown.reduce((s, r) => s + (r.qbData ? r.qbData.netCents : 0), 0);
+
+  // Revenue mix (30d): recurring subscriptions vs manual invoices vs ad-hoc.
+  const okMix = shown.map((r) => r.mix).filter((m): m is NonNullable<typeof m> => !!m && !m.error);
+  const mixRecurring = okMix.reduce((s, m) => s + m.recurringCents, 0);
+  const mixInvoice = okMix.reduce((s, m) => s + m.invoiceCents, 0);
+  const mixOther = okMix.reduce((s, m) => s + m.otherCents, 0);
+  const mixTotal = mixRecurring + mixInvoice + mixOther;
+  const mixPct = (c: number) => (mixTotal > 0 ? Math.round((c / mixTotal) * 100) : 0);
+  const mixItems = okMix
+    .flatMap((m) => m.items)
+    .sort((a, b) => b.cents - a.cents)
+    .slice(0, 6);
 
   const notConnected = allowedEntities.filter(
     (e) => !rows.find((r) => r.key === e.key && (r.hasStripeKey || r.qbData)),
@@ -135,6 +153,71 @@ export default async function RevenuePage({
           </tbody>
         </table>
       </div>
+
+      {mixTotal > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-slate-800">
+              Revenue mix — last 30 days
+            </h2>
+            <span className="text-xs text-slate-400">
+              {formatMoney(mixTotal, currency)} collected
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+              <p className="text-xs font-medium text-emerald-700">Recurring subscriptions</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                {formatMoney(mixRecurring, currency)}{" "}
+                <span className="text-xs font-normal text-slate-400">{mixPct(mixRecurring)}%</span>
+              </p>
+            </div>
+            <div className="rounded-lg border border-amber-100 bg-amber-50/50 p-3">
+              <p className="text-xs font-medium text-amber-700">Manual / GHL invoices</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                {formatMoney(mixInvoice, currency)}{" "}
+                <span className="text-xs font-normal text-slate-400">{mixPct(mixInvoice)}%</span>
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-500">Other one-off</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">
+                {formatMoney(mixOther, currency)}{" "}
+                <span className="text-xs font-normal text-slate-400">{mixPct(mixOther)}%</span>
+              </p>
+            </div>
+          </div>
+          {mixItems.length > 0 && (
+            <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs text-slate-600">
+              {mixItems.map((i, idx) => (
+                <li key={idx} className="flex items-center justify-between">
+                  <span className="truncate">
+                    <span
+                      className={`mr-2 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                        i.kind === "subscription"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : i.kind === "invoice"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {i.kind === "subscription" ? "recurring" : i.kind === "invoice" ? "invoice" : "one-off"}
+                    </span>
+                    {i.label}
+                  </span>
+                  <span className="tabular-nums text-slate-700">{formatMoney(i.cents, currency)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {mixInvoice > 0 && (
+            <p className="mt-3 text-xs text-amber-600">
+              Amber = paid via manual/GHL invoices. Monthly services billed this way are recurring
+              revenue that isn&apos;t counted in MRR — worth converting to real subscriptions.
+            </p>
+          )}
+        </div>
+      )}
 
       {notConnected.length > 0 && (
         <p className="text-xs text-slate-400">
