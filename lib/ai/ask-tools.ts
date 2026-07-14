@@ -140,15 +140,6 @@ export function buildTools(ctx: AskCtx): ToolDef[] {
         },
       },
     },
-    {
-      type: "function",
-      function: {
-        name: "get_daily_brief",
-        description:
-          "The most recent pre-computed Daily Brief (headline, per-brand snapshot, what needs attention, voice of customer, today's focus). Good background for 'how's the business' questions.",
-        parameters: { type: "object", properties: {}, additionalProperties: false },
-      },
-    },
   ];
 }
 
@@ -357,29 +348,6 @@ export async function runTool(name: string, args: any, ctx: AskCtx): Promise<any
           brand: r.entity_key ?? (r.scope === "shared" ? "portfolio" : null),
         })),
       };
-    }
-
-    case "get_daily_brief": {
-      const admin = createAdminClient();
-      if (!admin) return { error: "store_unavailable" };
-      let q = admin
-        .from("daily_briefs")
-        .select("content")
-        .order("created_at", { ascending: false })
-        .limit(1);
-      q = ctx.isOwner ? q.is("entity_key", null) : q.in("entity_key", ctx.brands);
-      let content = (await q).data?.[0]?.content ?? null;
-      if (!content && ctx.isOwner) {
-        content =
-          (
-            await admin
-              .from("daily_briefs")
-              .select("content")
-              .order("created_at", { ascending: false })
-              .limit(1)
-          ).data?.[0]?.content ?? null;
-      }
-      return content ?? { note: "no brief stored yet" };
     }
 
     default:

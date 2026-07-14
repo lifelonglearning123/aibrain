@@ -31,12 +31,52 @@ function sourceLabels(tools?: string[]): string[] {
   return [...new Set(tools.map((t) => SOURCE_LABEL[t] ?? t))];
 }
 
-export function AskChat({ ready }: { ready: boolean }) {
+interface BrandOpt {
+  key: string;
+  name: string;
+}
+
+export function AskChat({
+  ready,
+  brands = [],
+  canTeach = false,
+}: {
+  ready: boolean;
+  brands?: BrandOpt[];
+  canTeach?: boolean;
+}) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+  // "Teach the brain" — durable corrections it always applies.
+  const [teachOpen, setTeachOpen] = useState(false);
+  const [teachText, setTeachText] = useState("");
+  const [teachBrand, setTeachBrand] = useState("all");
+  const [teachSaved, setTeachSaved] = useState(false);
+  const [teachBusy, setTeachBusy] = useState(false);
+
+  async function teach() {
+    if (!teachText.trim() || teachBusy) return;
+    setTeachBusy(true);
+    setTeachSaved(false);
+    try {
+      const res = await fetch("/api/brain/teach", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: teachText.trim(), entity: teachBrand }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setTeachSaved(true);
+        setTeachText("");
+      }
+    } finally {
+      setTeachBusy(false);
+    }
+  }
 
   async function ask(question: string) {
     if (!question.trim() || loading) return;
@@ -71,6 +111,7 @@ export function AskChat({ ready }: { ready: boolean }) {
   }
 
   return (
+    <>
     <div className="flex h-[calc(100vh-13rem)] flex-col rounded-xl border border-slate-200 bg-white">
       <div className="flex-1 space-y-4 overflow-y-auto p-5">
         {messages.length === 0 ? (
@@ -152,5 +193,70 @@ export function AskChat({ ready }: { ready: boolean }) {
         </button>
       </form>
     </div>
+
+    {canTeach && (
+      <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm">
+        {!teachOpen ? (
+          <button
+            onClick={() => setTeachOpen(true)}
+            className="text-xs font-medium text-slate-500 hover:text-slate-800"
+          >
+            + Teach the brain a fact (so it stops getting something wrong)
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-700">
+                Teach the brain a durable fact
+              </p>
+              <button
+                onClick={() => setTeachOpen(false)}
+                className="text-xs text-slate-400 hover:text-slate-600"
+              >
+                close
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              It always applies these — use for things it can&apos;t compute, e.g. &quot;exclude
+              yibo@ and chao@ as test accounts&quot; or &quot;trust paid invoices over the Xero
+              P&amp;L&quot;.
+            </p>
+            <textarea
+              value={teachText}
+              onChange={(e) => {
+                setTeachText(e.target.value);
+                setTeachSaved(false);
+              }}
+              rows={2}
+              placeholder="Tell the brain a fact or correction…"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+            />
+            <div className="flex items-center gap-2">
+              <select
+                value={teachBrand}
+                onChange={(e) => setTeachBrand(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs text-slate-600 outline-none"
+              >
+                <option value="all">All companies</option>
+                {brands.map((b) => (
+                  <option key={b.key} value={b.key}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={teach}
+                disabled={teachBusy || !teachText.trim()}
+                className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                {teachBusy ? "Saving…" : "Teach"}
+              </button>
+              {teachSaved && <span className="text-xs text-emerald-600">Learned ✓</span>}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+    </>
   );
 }

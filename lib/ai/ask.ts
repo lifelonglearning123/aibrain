@@ -1,5 +1,6 @@
 import { chatWithTools, openaiConfig } from "./openai";
 import { buildTools, runTool, type AskCtx } from "./ask-tools";
+import { getTaughtFacts } from "./brain-facts";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
 
 /**
@@ -29,18 +30,33 @@ export async function answerQuestion(params: {
     ? "a 3-brand portfolio — macaws.ai (AI tools), Artificial Ignorance, and Leonardo"
     : `the following company/companies you are responsible for: ${brandNames}`;
 
+  // Durable facts the user has taught the brain — always applied so it stops
+  // repeating a known-wrong interpretation (the "learning loop").
+  const facts = await getTaughtFacts(params.brands, params.isOwner);
+  const factsBlock = facts.length
+    ? "\n\nTAUGHT FACTS & CORRECTIONS (the user has told you these; ALWAYS apply them, they override any tool output or prior belief):\n" +
+      facts
+        .map((f) => `- ${f.entityKey ? `[${f.entityKey}] ` : "[all] "}${f.text}`)
+        .join("\n")
+    : "";
+
   const system =
     `You are the user's AI business brain for ${scopeLine}. ` +
-    "You have TOOLS that fetch LIVE business data (Stripe revenue & subscriptions, GHL pipeline & " +
-    "deals, Xero/QuickBooks accounting, Facebook ad spend) and a learned knowledge base from real " +
-    "sales calls, emails and Loom recaps. ALWAYS call the relevant tool(s) to get real, current " +
-    "numbers before answering a data question — never guess or rely on memory. For questions that " +
-    "span multiple companies, call the tool once per company. Cite the actual figures you retrieved " +
-    "(with currency). If a tool returns an error/note (e.g. 'not_configured' or 'not_connected'), " +
-    "say plainly that the source isn't connected and what to connect. Only discuss the company/" +
-    "companies in scope — never reference other businesses. Be concise, direct and useful — a sharp " +
-    "advisor, not a chatbot. Today's questions are about money, pipeline and customers, so prefer " +
-    "hard numbers over generalities.";
+    "You have TOOLS that fetch LIVE business data (Stripe revenue & subscriptions, revenue mix, GHL " +
+    "pipeline & deals, Xero/QuickBooks accounting, Facebook ad spend) and a learned knowledge base. " +
+    "\n\nHARD RULES:\n" +
+    "1. EVERY number you state must come from a tool call you made in THIS conversation. Never state " +
+    "a figure from memory, a previous turn, or any summary/brief — if you haven't just retrieved it, " +
+    "call the tool.\n" +
+    "2. For revenue/MRR, report the NET figure (after discounts) and the number of PAYING subscribers. " +
+    "Never report gross/list-price MRR as the headline — it counts free/test accounts.\n" +
+    "3. For multi-company questions, call the tool once per company.\n" +
+    "4. If a tool returns an error/note (e.g. 'not_configured'), say the source isn't connected and " +
+    "what to connect — don't invent a number.\n" +
+    "5. Only discuss the company/companies in scope; never reference other businesses.\n" +
+    "Be concise, direct and useful — a sharp advisor, not a chatbot. Prefer hard numbers over " +
+    "generalities." +
+    factsBlock;
 
   const history = Array.isArray(params.history) ? params.history.slice(-8) : [];
   const messages = [

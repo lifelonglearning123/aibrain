@@ -12,6 +12,7 @@ export async function embedMissingInsights(max = 300): Promise<number> {
     .from("brand_knowledge")
     .select("id,text")
     .is("embedding", null)
+    .neq("kind", "correction") // taught facts are always-injected rules, not search entries
     .limit(max);
   if (!data || data.length === 0) return 0;
 

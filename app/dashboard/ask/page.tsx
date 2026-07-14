@@ -1,11 +1,19 @@
 import { AskChat } from "@/components/AskChat";
 import { openaiConfig } from "@/lib/ai/openai";
 import { supabaseConfig } from "@/lib/supabase/config";
+import { getAccess } from "@/lib/access";
+import { ENTITIES } from "@/lib/entities";
 
 export const dynamic = "force-dynamic";
 
 export default async function AskPage() {
-  const ready = supabaseConfig().configured && (await openaiConfig()).configured;
+  const configured = supabaseConfig().configured;
+  const ready = configured && (await openaiConfig()).configured;
+  const access = configured ? await getAccess() : null;
+  const brands = ENTITIES.filter((e) => (access ? access.brands.includes(e.key) : true)).map(
+    (e) => ({ key: e.key, name: e.name }),
+  );
+  const canTeach = access ? access.isOwner : true;
 
   return (
     <div className="space-y-4">
@@ -16,7 +24,7 @@ export default async function AskPage() {
           demand, then answers with the real numbers.
         </p>
       </div>
-      <AskChat ready={ready} />
+      <AskChat ready={ready} brands={brands} canTeach={canTeach} />
     </div>
   );
 }
