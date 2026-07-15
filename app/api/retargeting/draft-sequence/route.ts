@@ -3,6 +3,7 @@ import { draftSequence } from "@/lib/ai/sequence";
 import { openaiConfig } from "@/lib/ai/openai";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
 import { getPreferenceGuidance } from "@/lib/preferences";
+import { getBrandProfile, profilePrompt, voiceBlock } from "@/lib/brand-profile";
 import { resolveEntity, ALL, ENTITIES, type EntityKey } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { getAccess } from "@/lib/access";
@@ -32,10 +33,19 @@ export async function POST(req: Request) {
   const brandName =
     entity === ALL ? undefined : ENTITIES.find((e) => e.key === (entity as EntityKey))?.name;
   const includeShared = access ? access.isOwner : true;
-  const knowledge = knowledgePrompt(
-    await getBrandKnowledge(entity === ALL ? "" : entity, { includeShared }),
-  );
-  const preferences = entity === ALL ? "" : await getPreferenceGuidance(entity, "sequence");
+  const profile = entity === ALL ? null : await getBrandProfile(entity as EntityKey);
+  const knowledge = [
+    profilePrompt(profile, brandName),
+    knowledgePrompt(await getBrandKnowledge(entity === ALL ? "" : entity, { includeShared })),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  const preferences = [
+    entity === ALL ? "" : await getPreferenceGuidance(entity, "sequence"),
+    voiceBlock(profile),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   try {
     const steps = await draftSequence({ brandName, goal, knowledge, preferences });

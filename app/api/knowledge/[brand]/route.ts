@@ -3,6 +3,7 @@ import { checkApiSecret } from "@/lib/brain-api-auth";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
 import { getPreferenceGuidance } from "@/lib/preferences";
 import { getTaughtFacts } from "@/lib/ai/brain-facts";
+import { getBrandProfile, profilePrompt, voiceBlock } from "@/lib/brand-profile";
 import { resolveEntity, ALL, ENTITIES, type EntityKey } from "@/lib/entities";
 
 export const dynamic = "force-dynamic";
@@ -26,20 +27,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ brand: string }
   const key = entity as EntityKey;
   const name = ENTITIES.find((e) => e.key === key)?.name ?? key;
 
-  const [k, prefs, facts] = await Promise.all([
+  const [k, prefs, facts, profile] = await Promise.all([
     getBrandKnowledge(key, { includeShared: true }),
     getPreferenceGuidance(key, "sequence"),
     getTaughtFacts([key], true),
+    getBrandProfile(key),
   ]);
 
-  // Winning angles first — these convert, so Goal Engine should lead with them.
+  // Business context first (what the business is), then winning angles, voice + rules.
   const promptBlock = [
+    profilePrompt(profile, name),
     knowledgePrompt(k),
+    voiceBlock(profile),
     facts.length ? `Rules to always follow: ${facts.map((f) => f.text).join(" | ")}` : "",
     prefs ? `Preferred writing style: ${prefs}` : "",
   ]
     .filter(Boolean)
-    .join("\n");
+    .join("\n\n");
 
   return NextResponse.json({
     ok: true,

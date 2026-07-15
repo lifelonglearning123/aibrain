@@ -29,6 +29,7 @@ const SECTIONS: {
     items: [
       { href: "/dashboard/ask", label: "Ask your data" },
       { href: "/dashboard/insights", label: "AI Insights" },
+      { href: "/dashboard/context", label: "Business context" },
     ],
   },
   {

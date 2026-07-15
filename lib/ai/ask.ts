@@ -1,6 +1,7 @@
 import { chatWithTools, openaiConfig } from "./openai";
 import { buildTools, runTool, type AskCtx } from "./ask-tools";
 import { getTaughtFacts } from "./brain-facts";
+import { getBrandProfiles, profilePrompt, brandName } from "@/lib/brand-profile";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
 
 /**
@@ -30,6 +31,14 @@ export async function answerQuestion(params: {
     ? "a 3-brand portfolio — macaws.ai (AI tools), Artificial Ignorance, and Leonardo"
     : `the following company/companies you are responsible for: ${brandNames}`;
 
+  // Business context (author-written profile per brand) — the foundation that
+  // makes answers business-specific instead of generic.
+  const profiles = await getBrandProfiles(params.brands);
+  const profileBlock = Object.entries(profiles)
+    .map(([key, p]) => profilePrompt(p, brandName(key as EntityKey)))
+    .filter(Boolean)
+    .join("\n\n");
+
   // Durable facts the user has taught the brain — always applied so it stops
   // repeating a known-wrong interpretation (the "learning loop").
   const facts = await getTaughtFacts(params.brands, params.isOwner);
@@ -56,6 +65,7 @@ export async function answerQuestion(params: {
     "5. Only discuss the company/companies in scope; never reference other businesses.\n" +
     "Be concise, direct and useful — a sharp advisor, not a chatbot. Prefer hard numbers over " +
     "generalities." +
+    (profileBlock ? `\n\n${profileBlock}` : "") +
     factsBlock;
 
   const history = Array.isArray(params.history) ? params.history.slice(-8) : [];

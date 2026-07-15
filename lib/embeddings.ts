@@ -12,9 +12,9 @@ export async function embedMissingInsights(max = 300): Promise<number> {
     .from("brand_knowledge")
     .select("id,text")
     .is("embedding", null)
-    // taught facts are always-injected rules; funnel_signal are raw outcome rows —
-    // neither belongs in semantic search (the distilled winners do, as winning_phrase).
-    .not("kind", "in", "(correction,funnel_signal)")
+    // taught facts + business profiles are always-injected context, and funnel_signal
+    // are raw outcome rows — none belong in semantic search (distilled winners do).
+    .not("kind", "in", "(correction,funnel_signal,profile)")
     .limit(max);
   if (!data || data.length === 0) return 0;
 
