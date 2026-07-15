@@ -19,9 +19,11 @@ import { type EntityKey } from "@/lib/entities";
  */
 export async function draftBrandProfile(
   entity: EntityKey,
+  opts?: { answers?: { q: string; a: string }[] },
 ): Promise<{ ok: boolean; profile?: BrandProfile; error?: string }> {
   if (!(await openaiConfig()).configured) return { ok: false, error: "openai_not_configured" };
   const name = brandName(entity);
+  const answers = (opts?.answers ?? []).filter((x) => x?.a && x.a.trim());
 
   const [k, facts, subsRes, mix, rev, pipe, existing, voiceSamples] = await Promise.all([
     getBrandKnowledge(entity, { includeShared: false }),
@@ -65,6 +67,13 @@ export async function draftBrandProfile(
     evidence.push(`Sales pipeline stages: ${pipe.stages.map((s) => `${s.name} (${s.count})`).join(", ")}; win rate ${pipe.winRate == null ? "n/a" : Math.round(pipe.winRate * 100) + "%"}.`);
   if (voiceSamples.length)
     evidence.push(`Owner's real writing (infer voiceTone from this): ${voiceSamples.join(" ").slice(0, 800)}`);
+
+  // The owner's direct interview answers are the highest-priority truth — put first.
+  if (answers.length)
+    evidence.unshift(
+      "The owner answered these directly (treat as the highest-priority truth, above any inferred data):\n" +
+        answers.map((x) => `Q: ${x.q}\nA: ${x.a.trim()}`).join("\n"),
+    );
 
   if (evidence.length === 0)
     return { ok: false, error: "not_enough_evidence" };

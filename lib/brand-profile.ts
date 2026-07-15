@@ -56,6 +56,18 @@ export const PROFILE_FIELDS: ProfileField[] = [
 
 export const PROFILE_GROUPS = [...new Set(PROFILE_FIELDS.map((f) => f.group))];
 
+/** Guided interview questions — the human-only context the AI can't infer from data. */
+export const INTERVIEW_QUESTIONS: string[] = [
+  "In a sentence or two — who are you, what do you sell, and to whom?",
+  "What are your main packages, and what do they cost?",
+  "Who is your ideal customer, and what problem are they trying to solve?",
+  "Why do customers choose you over the alternatives — what's your edge?",
+  "What are your top 2–3 priorities for this business right now, and why?",
+  "What would break first if your volume 10×'d tomorrow?",
+  "How would you describe your tone of voice? (e.g. direct, warm, no jargon)",
+  "Anything else the brain should know about this business?",
+];
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function getBrandProfile(entity: EntityKey): Promise<BrandProfile | null> {
   const admin = createAdminClient();

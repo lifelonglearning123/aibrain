@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   PROFILE_FIELDS,
   PROFILE_GROUPS,
+  INTERVIEW_QUESTIONS,
   type BrandProfile,
 } from "@/lib/brand-profile";
 import { VOICE_INFLUENCES } from "@/lib/voice-influences";
@@ -39,6 +40,10 @@ export function BrandContextForm({
   const [error, setError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [draftNote, setDraftNote] = useState<string | null>(null);
+  const [mode, setMode] = useState<"form" | "interview">("form");
+  const [qIndex, setQIndex] = useState(0);
+  const [answers, setAnswers] = useState<string[]>(() => INTERVIEW_QUESTIONS.map(() => ""));
+  const [building, setBuilding] = useState(false);
 
   const current = profiles[active] ?? {};
   const pct = useMemo(() => completeness(current), [current]);
@@ -104,6 +109,56 @@ export function BrandContextForm({
     }
   }
 
+  // Interview → synthesise a profile from the owner's answers + live data.
+  async function buildFromInterview() {
+    if (building) return;
+    setBuilding(true);
+    setError(null);
+    try {
+      const payload = INTERVIEW_QUESTIONS.map((q, i) => ({ q, a: answers[i] })).filter((x) =>
+        x.a.trim(),
+      );
+      if (payload.length === 0) {
+        setError("Answer at least one question first.");
+        return;
+      }
+      const res = await fetch("/api/context/interview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ entity: active, answers: payload }),
+      });
+      const data = await res.json();
+      if (data.ok && data.profile) {
+        setProfiles((prev) => {
+          const cur = { ...prev[active] };
+          for (const f of PROFILE_FIELDS) {
+            const v = (data.profile as BrandProfile)[f.key];
+            if (typeof v === "string" && v.trim()) {
+              // Interview answers win; voice samples only fill if still blank.
+              if (f.key === "voiceSamples") {
+                if (!(cur.voiceSamples ?? "").trim()) cur.voiceSamples = v;
+              } else {
+                cur[f.key] = v;
+              }
+            }
+          }
+          return { ...prev, [active]: cur };
+        });
+        setSaved(false);
+        setMode("form");
+        setDraftNote("Built from your interview + your data — review and Save.");
+        setAnswers(INTERVIEW_QUESTIONS.map(() => ""));
+        setQIndex(0);
+      } else {
+        setError(data.error ?? "interview_failed");
+      }
+    } catch {
+      setError("request_failed");
+    } finally {
+      setBuilding(false);
+    }
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
@@ -161,6 +216,108 @@ export function BrandContextForm({
         </div>
       )}
 
+      {/* Mode: fill-in form vs guided interview */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setMode("form")}
+          className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+            mode === "form"
+              ? "border-slate-900 bg-slate-900 text-white"
+              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          ✍️ Fill in / edit
+        </button>
+        <button
+          onClick={() => {
+            setMode("interview");
+            setQIndex(0);
+            setError(null);
+          }}
+          className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+            mode === "interview"
+              ? "border-slate-900 bg-slate-900 text-white"
+              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          🎤 Interview me
+        </button>
+      </div>
+
+      {mode === "interview" && (
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">
+              Interview — {brands.find((b) => b.key === active)?.name}
+            </h3>
+            <span className="text-xs text-slate-400">
+              Question {qIndex + 1} of {INTERVIEW_QUESTIONS.length}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${Math.round((qIndex / INTERVIEW_QUESTIONS.length) * 100)}%` }}
+            />
+          </div>
+          <p className="text-base font-medium text-slate-800">{INTERVIEW_QUESTIONS[qIndex]}</p>
+          <textarea
+            value={answers[qIndex]}
+            onChange={(e) =>
+              setAnswers((a) => {
+                const n = [...a];
+                n[qIndex] = e.target.value;
+                return n;
+              })
+            }
+            rows={4}
+            placeholder="Answer in your own words — a voice-dictation tool works great here."
+            className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            {qIndex > 0 && (
+              <button
+                onClick={() => setQIndex((i) => i - 1)}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Back
+              </button>
+            )}
+            {qIndex < INTERVIEW_QUESTIONS.length - 1 ? (
+              <button
+                onClick={() => setQIndex((i) => i + 1)}
+                className="rounded-lg bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                onClick={buildFromInterview}
+                disabled={building}
+                className="rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {building ? "Building…" : "Build my profile ✨"}
+              </button>
+            )}
+            <button
+              onClick={() =>
+                qIndex < INTERVIEW_QUESTIONS.length - 1 ? setQIndex((i) => i + 1) : buildFromInterview()
+              }
+              className="text-xs text-slate-400 hover:text-slate-600"
+            >
+              Skip
+            </button>
+            {error && <span className="text-sm text-red-600">Error: {error}</span>}
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Skip anything — the AI fills gaps from your live data, and you review everything before
+            saving.
+          </p>
+        </div>
+      )}
+
+      {mode === "form" && (
+        <>
       {/* AI draft + completeness */}
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -256,6 +413,8 @@ export function BrandContextForm({
         {saved && <span className="text-sm text-emerald-600">Saved ✓ — the brain now knows this.</span>}
         {error && <span className="text-sm text-red-600">Error: {error}</span>}
       </div>
+      </>
+      )}
     </div>
   );
 }
