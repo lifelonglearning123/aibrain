@@ -2,7 +2,7 @@ import { chatJSON, openaiConfig } from "./openai";
 import { getBrandKnowledge } from "@/lib/knowledge";
 import { getTaughtFacts } from "./brain-facts";
 import { getBrandRevenue, listBrandSubscriptions, getBrandRevenueMix } from "@/lib/integrations/stripe";
-import { getBrandPipeline } from "@/lib/integrations/ghl";
+import { getBrandPipeline, fetchOutboundSamples } from "@/lib/integrations/ghl";
 import {
   getBrandProfile,
   brandName,
@@ -23,7 +23,7 @@ export async function draftBrandProfile(
   if (!(await openaiConfig()).configured) return { ok: false, error: "openai_not_configured" };
   const name = brandName(entity);
 
-  const [k, facts, subsRes, mix, rev, pipe, existing] = await Promise.all([
+  const [k, facts, subsRes, mix, rev, pipe, existing, voiceSamples] = await Promise.all([
     getBrandKnowledge(entity, { includeShared: false }),
     getTaughtFacts([entity], true),
     listBrandSubscriptions(entity),
@@ -31,6 +31,7 @@ export async function draftBrandProfile(
     getBrandRevenue(entity),
     getBrandPipeline(entity),
     getBrandProfile(entity),
+    fetchOutboundSamples(entity, 2),
   ]);
 
   // Distinct subscription plans → strong signal for offer + pricing.
@@ -62,6 +63,8 @@ export async function draftBrandProfile(
     );
   if (!pipe.error && pipe.stages.length)
     evidence.push(`Sales pipeline stages: ${pipe.stages.map((s) => `${s.name} (${s.count})`).join(", ")}; win rate ${pipe.winRate == null ? "n/a" : Math.round(pipe.winRate * 100) + "%"}.`);
+  if (voiceSamples.length)
+    evidence.push(`Owner's real writing (infer voiceTone from this): ${voiceSamples.join(" ").slice(0, 800)}`);
 
   if (evidence.length === 0)
     return { ok: false, error: "not_enough_evidence" };
@@ -85,9 +88,13 @@ export async function draftBrandProfile(
 
   const profile: BrandProfile = {};
   for (const f of PROFILE_FIELDS) {
-    if (f.key === "voiceSamples") continue; // only the human supplies real writing
+    if (f.key === "voiceSamples") continue; // filled from the owner's real messages below
     const v = (json as Record<string, unknown>)[f.key];
     if (typeof v === "string" && v.trim()) profile[f.key] = v.trim().slice(0, 8000);
+  }
+  // Voice samples come from the owner's OWN recent sent messages, verbatim — not the LLM.
+  if (voiceSamples.length) {
+    profile.voiceSamples = voiceSamples.join("\n\n— — —\n\n");
   }
   return { ok: true, profile };
 }

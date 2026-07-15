@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
+import { influenceStyleBlock } from "@/lib/voice-influences";
 
 /**
  * Business Context — the durable, human-authored profile of each business (offer,
@@ -21,10 +22,17 @@ export interface BrandProfile {
   priorities?: string;
   constraints?: string;
   notes?: string;
+  /** Selected well-known entrepreneur voice influences (keys from voice-influences.ts). */
+  voiceInfluences?: string[];
+  /** A custom voice reference (a named person + description, or pasted style notes). */
+  customVoice?: string;
 }
 
+/** The free-text profile fields (everything except the structured voiceInfluences list). */
+export type ProfileTextKey = Exclude<keyof BrandProfile, "voiceInfluences">;
+
 export interface ProfileField {
-  key: keyof BrandProfile;
+  key: ProfileTextKey;
   label: string;
   hint: string;
   group: string;
@@ -134,17 +142,19 @@ export function profilePrompt(profile: BrandProfile | null | undefined, brandNam
   return `BUSINESS CONTEXT${brandName ? ` — ${brandName}` : ""} (author: the owner; treat as ground truth):\n${lines.join("\n")}`;
 }
 
-/** The owner's real writing samples, for grounding drafts in their voice. */
+/** The owner's real writing samples + chosen influences, for grounding drafts. */
 export function voiceBlock(profile: BrandProfile | null | undefined): string {
   const s = profile?.voiceSamples?.trim();
   const tone = profile?.voiceTone?.trim();
-  if (!s && !tone) return "";
+  const influences = influenceStyleBlock(profile?.voiceInfluences, profile?.customVoice);
+  if (!s && !tone && !influences) return "";
   return [
     tone ? `Tone: ${tone}` : "",
-    s ? `Write in this person's voice — samples of their real writing:\n${s.slice(0, 2000)}` : "",
+    s ? `Write in this brand's own voice — samples of their real writing:\n${s.slice(0, 2000)}` : "",
+    influences,
   ]
     .filter(Boolean)
-    .join("\n");
+    .join("\n\n");
 }
 
 export function brandName(entity: EntityKey): string {

@@ -7,6 +7,7 @@ import {
   PROFILE_GROUPS,
   type BrandProfile,
 } from "@/lib/brand-profile";
+import { VOICE_INFLUENCES } from "@/lib/voice-influences";
 
 interface BrandOpt {
   key: string;
@@ -42,8 +43,17 @@ export function BrandContextForm({
   const current = profiles[active] ?? {};
   const pct = useMemo(() => completeness(current), [current]);
 
-  function set(key: keyof BrandProfile, value: string) {
+  function set(key: Exclude<keyof BrandProfile, "voiceInfluences">, value: string) {
     setProfiles((prev) => ({ ...prev, [active]: { ...prev[active], [key]: value } }));
+    setSaved(false);
+  }
+
+  const selectedInfluences = current.voiceInfluences ?? [];
+  function toggleInfluence(key: string) {
+    const next = selectedInfluences.includes(key)
+      ? selectedInfluences.filter((k) => k !== key)
+      : [...selectedInfluences, key];
+    setProfiles((prev) => ({ ...prev, [active]: { ...prev[active], voiceInfluences: next } }));
     setSaved(false);
   }
 
@@ -77,7 +87,7 @@ export function BrandContextForm({
         setSaved(false);
         setDraftNote(
           filled > 0
-            ? `AI drafted ${filled} field${filled === 1 ? "" : "s"} from your data — review, tweak, then Save. (Voice samples are for you to paste.)`
+            ? `AI drafted ${filled} field${filled === 1 ? "" : "s"} from your data — including a voice sample pulled from your own sent messages. Review, tweak (or optionally pick a voice influence below), then Save.`
             : "Nothing new to draft — your fields are already filled.",
         );
       } else {
@@ -196,6 +206,44 @@ export function BrandContextForm({
           </div>
         </div>
       ))}
+
+      {/* Voice influences — borrow a well-known entrepreneur's style */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <h3 className="mb-1 text-sm font-semibold text-slate-700">Voice influences</h3>
+        <p className="mb-3 text-xs text-slate-500">
+          Optional — borrow the communication style of a well-known entrepreneur. Your brand&apos;s
+          own voice stays in charge; these just add flavour to drafts. Hover for each style.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {VOICE_INFLUENCES.map((v) => {
+            const on = selectedInfluences.includes(v.key);
+            return (
+              <button
+                key={v.key}
+                onClick={() => toggleInfluence(v.key)}
+                title={v.style}
+                className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                  on
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {v.name} <span className={on ? "text-slate-300" : "text-slate-400"}>· {v.tagline}</span>
+              </button>
+            );
+          })}
+        </div>
+        <label className="mb-1 mt-4 block text-xs font-medium text-slate-600">
+          Or add your own reference
+        </label>
+        <textarea
+          value={current.customVoice ?? ""}
+          onChange={(e) => set("customVoice", e.target.value)}
+          rows={2}
+          placeholder="e.g. 'Daniel Priestley meets our founder — British, credible, a bit cheeky.' Or paste a paragraph by someone whose style you like."
+          className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+        />
+      </div>
 
       <div className="sticky bottom-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 p-3 backdrop-blur">
         <button

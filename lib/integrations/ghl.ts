@@ -323,6 +323,68 @@ export interface GhlConversation {
   text: string;
 }
 
+/**
+ * The owner's own recent OUTBOUND messages (email/SMS), as raw voice samples for
+ * the Business Context "voice" box — so drafting sounds like them, auto-filled.
+ * Substantive prose only; HTML stripped; automated/footer-only messages skipped.
+ */
+export async function fetchOutboundSamples(entity: EntityKey, limit = 3): Promise<string[]> {
+  const cfg = await ghlConfigForEntity(entity);
+  if (!cfg.configured || !cfg.token || !cfg.locationId) return [];
+  const found: string[] = [];
+  try {
+    const res = await ghlFetch(
+      cfg.token,
+      `/conversations/search?locationId=${encodeURIComponent(cfg.locationId)}&limit=25`,
+    );
+    if (!res.ok) return [];
+    const json: any = await res.json();
+    const convos: any[] = json?.conversations ?? [];
+    for (const c of convos) {
+      const id = c?.id;
+      if (!id) continue;
+      const mres = await ghlFetch(cfg.token, `/conversations/${encodeURIComponent(id)}/messages`);
+      if (!mres.ok) continue;
+      const mjson: any = await mres.json();
+      const msgs: any[] = mjson?.messages?.messages ?? mjson?.messages ?? [];
+      for (const m of msgs) {
+        if (String(m?.direction ?? "").toLowerCase() !== "outbound") continue;
+        let body = String(m?.body ?? m?.message ?? "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&nbsp;|&amp;|&#39;/g, " ")
+          .replace(/https?:\/\/\S+/g, "")
+          .replace(/location\s+logo/gi, "")
+          .replace(/[[\]]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (body.length < 120) continue; // want real prose, not "ok"/links
+        // Skip automated/transactional templates — they're not the owner's voice.
+        if (
+          /invoice|payment (is )?success|\breceipt\b|view invoice|\bINV[- ]?\d|amount (due|paid|remaining)|unsubscribe|view in browser|no-?reply|do not reply|verify your|reset your|one-time (code|password)|order #|©\s*\d{4}|accept invite|single-use|you'?ve been invited|invited to join|welcome to/i.test(
+            body,
+          )
+        )
+          continue;
+        found.push(body.slice(0, 600));
+      }
+      if (found.length >= limit * 4) break;
+    }
+  } catch {
+    /* best-effort */
+  }
+  // Most substantive first, de-duplicated.
+  const seen = new Set<string>();
+  return found
+    .sort((a, b) => b.length - a.length)
+    .filter((s) => {
+      const k = s.slice(0, 50).toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .slice(0, limit);
+}
+
 /** Recent conversations (email/SMS) with their message bodies (anonymised text only). */
 export async function fetchConversations(
   entity: EntityKey,
