@@ -36,6 +36,8 @@ export function BrandContextForm({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftNote, setDraftNote] = useState<string | null>(null);
 
   const current = profiles[active] ?? {};
   const pct = useMemo(() => completeness(current), [current]);
@@ -43,6 +45,53 @@ export function BrandContextForm({
   function set(key: keyof BrandProfile, value: string) {
     setProfiles((prev) => ({ ...prev, [active]: { ...prev[active], [key]: value } }));
     setSaved(false);
+  }
+
+  // AI drafts the profile from what the brain already knows; fills only the BLANK
+  // fields so it never clobbers what you've written. You then improve + save.
+  async function draftWithAI() {
+    if (drafting) return;
+    setDrafting(true);
+    setDraftNote(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/context/draft", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ entity: active }),
+      });
+      const data = await res.json();
+      if (data.ok && data.profile) {
+        let filled = 0;
+        setProfiles((prev) => {
+          const cur = { ...prev[active] };
+          for (const f of PROFILE_FIELDS) {
+            const draftVal = (data.profile as BrandProfile)[f.key];
+            if (draftVal && !(cur[f.key] ?? "").trim()) {
+              cur[f.key] = draftVal;
+              filled += 1;
+            }
+          }
+          return { ...prev, [active]: cur };
+        });
+        setSaved(false);
+        setDraftNote(
+          filled > 0
+            ? `AI drafted ${filled} field${filled === 1 ? "" : "s"} from your data — review, tweak, then Save. (Voice samples are for you to paste.)`
+            : "Nothing new to draft — your fields are already filled.",
+        );
+      } else {
+        setError(
+          data.error === "not_enough_evidence"
+            ? "Not enough data learned about this business yet to draft it."
+            : data.error ?? "draft_failed",
+        );
+      }
+    } catch {
+      setError("request_failed");
+    } finally {
+      setDrafting(false);
+    }
   }
 
   async function save() {
@@ -102,8 +151,15 @@ export function BrandContextForm({
         </div>
       )}
 
-      {/* Completeness bar */}
-      <div className="flex items-center gap-3">
+      {/* AI draft + completeness */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={draftWithAI}
+          disabled={drafting}
+          className="rounded-lg border border-slate-900 bg-slate-900 px-3.5 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+        >
+          {drafting ? "Drafting from your data…" : "✨ Draft with AI"}
+        </button>
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all"
@@ -112,6 +168,13 @@ export function BrandContextForm({
         </div>
         <span className="text-xs font-medium text-slate-500">{pct}% complete</span>
       </div>
+      {draftNote && <p className="-mt-1 text-xs text-slate-500">{draftNote}</p>}
+      {pct === 0 && !drafting && !draftNote && (
+        <p className="-mt-1 text-xs text-slate-400">
+          Don&apos;t start from blank — hit <strong>Draft with AI</strong> and it&apos;ll fill this
+          in from everything the brain has already learned. You just improve it.
+        </p>
+      )}
 
       {/* Fields grouped */}
       {PROFILE_GROUPS.map((group) => (
