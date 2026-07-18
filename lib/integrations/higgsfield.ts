@@ -15,7 +15,9 @@ export async function higgsfieldConfig() {
   const apiKey = await cred("HIGGSFIELD_API_KEY"); // format: KEY_ID:KEY_SECRET
   // V1 text→image model at /v1/text2image/{model}. "soul" is Higgsfield's own.
   const imageModel = (await cred("HIGGSFIELD_MODEL")) ?? "soul";
-  const videoModel = (await cred("HIGGSFIELD_VIDEO_MODEL")) ?? "dop-turbo";
+  // dop-preview holds the art-directed composition far longer than dop-turbo
+  // (which introduces foreign objects ~2s in). Valid: dop-lite | dop-preview | dop-turbo.
+  const videoModel = (await cred("HIGGSFIELD_VIDEO_MODEL")) ?? "dop-preview";
   const base = (await cred("HIGGSFIELD_BASE_URL")) ?? DEFAULT_BASE;
   return { apiKey, imageModel, videoModel, base, configured: Boolean(apiKey) };
 }

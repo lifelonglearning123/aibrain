@@ -19,9 +19,9 @@ interface Scene {
   duration?: number;
 }
 
-// AI video models tend to add an intruding object / scene-drift in the last
-// second or so of a clip. Trim that tail off AI clips on assembly.
-const AI_TAIL_TRIM_S = 1.0;
+// AI video models drift in the last ~1.5s of a clip (dop-preview blooms/zooms;
+// dop-turbo adds a foreign object). Trim that tail off AI clips on assembly.
+const AI_TAIL_TRIM_S = 1.5;
 
 const VIDEO_PLATFORMS = ["instagram", "tiktok", "youtube", "facebook", "x", "linkedin"];
 
