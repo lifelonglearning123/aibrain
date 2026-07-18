@@ -20,8 +20,10 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => ({}))) as {
-    clips?: { url: string }[];
+    clips?: { url: string; length?: number }[];
     aspect?: string;
+    voiceoverUrl?: string;
+    musicUrl?: string;
   };
   const clips = (Array.isArray(body.clips) ? body.clips : []).filter(
     (c) => c && typeof c.url === "string" && c.url.startsWith("http"),
@@ -30,6 +32,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "no_clips" }, { status: 400 });
   }
 
-  const result = await submitRender(clips, body.aspect ?? "9:16");
+  const isUrl = (u?: string) => typeof u === "string" && u.startsWith("http");
+  const result = await submitRender(clips, body.aspect ?? "9:16", {
+    soundtrackUrl: isUrl(body.voiceoverUrl) ? body.voiceoverUrl : undefined,
+    musicUrl: isUrl(body.musicUrl) ? body.musicUrl : undefined,
+  });
   return NextResponse.json(result, { status: result.ok ? 200 : 502 });
 }

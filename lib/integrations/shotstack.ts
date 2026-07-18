@@ -53,6 +53,7 @@ async function sfetch(path: string, init: RequestInit): Promise<Response> {
 export async function submitRender(
   clips: { url: string; length?: number }[],
   aspect: string,
+  opts?: { soundtrackUrl?: string; musicUrl?: string },
 ): Promise<RenderSubmit> {
   if (!(await shotstackConfig()).configured) return { ok: false, error: "not_configured" };
   if (!clips.length) return { ok: false, error: "no_clips" };
@@ -63,8 +64,30 @@ export async function submitRender(
     length: c.length && c.length > 0 ? Number(c.length.toFixed(2)) : "auto",
   }));
 
+  const timeline: Record<string, unknown> = {
+    background: "#000000",
+    tracks: [{ clips: timelineClips }],
+  };
+  // The voiceover rides as the timeline soundtrack (fades out at the end).
+  // Optional background music can layer under it at a lower volume as its own
+  // audio track (Shotstack mixes tracks).
+  if (opts?.soundtrackUrl) {
+    timeline.soundtrack = { src: opts.soundtrackUrl, effect: "fadeOut" };
+  }
+  if (opts?.musicUrl) {
+    (timeline.tracks as unknown[]).push({
+      clips: [
+        {
+          asset: { type: "audio", src: opts.musicUrl, volume: 0.15, effect: "fadeInFadeOut" },
+          start: 0,
+          length: "auto",
+        },
+      ],
+    });
+  }
+
   const body = {
-    timeline: { background: "#000000", tracks: [{ clips: timelineClips }] },
+    timeline,
     output: { format: "mp4", resolution: "hd", aspectRatio: aspect },
   };
 

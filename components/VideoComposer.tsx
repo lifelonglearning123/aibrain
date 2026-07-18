@@ -24,6 +24,7 @@ interface Scene {
 const AI_TAIL_TRIM_S = 1.5;
 
 const VIDEO_PLATFORMS = ["instagram", "tiktok", "youtube", "facebook", "x", "linkedin"];
+const TTS_VOICES = ["onyx", "alloy", "echo", "fable", "nova", "shimmer"];
 
 export function VideoComposer({
   aiConfigured,
@@ -45,6 +46,18 @@ export function VideoComposer({
   // each clip's still is grounded in the post, not a bare scene description.
   const [topic, setTopic] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
+
+  // Storyboard (auto-build scenes) — the length lever.
+  const [targetSeconds, setTargetSeconds] = useState(24);
+  const [sbLoading, setSbLoading] = useState(false);
+  const [sbError, setSbError] = useState<string | null>(null);
+
+  // Voiceover — the audio lever.
+  const [script, setScript] = useState("");
+  const [voice, setVoice] = useState("onyx");
+  const [voiceoverUrl, setVoiceoverUrl] = useState<string | null>(null);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   // Assembly
   const [rendering, setRendering] = useState(false);
@@ -156,6 +169,64 @@ export function VideoComposer({
     setRendering(false);
   }
 
+  // Auto-build a storyboard: the brain writes a narration split into beats and
+  // turns each beat into an AI scene — this is how the video gets longer.
+  async function buildStoryboard() {
+    if (!topic.trim()) return;
+    setSbLoading(true);
+    setSbError(null);
+    try {
+      const res = await fetch("/api/video/storyboard", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ entity: brand, topic, targetSeconds }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setSbError(data.error ?? "storyboard_failed");
+        return;
+      }
+      const beats: { vo: string; shotConcept: string }[] = data.beats ?? [];
+      setScenes(
+        beats.map((b) => ({
+          id: crypto.randomUUID(),
+          source: "ai" as const,
+          prompt: b.shotConcept,
+          clipUrl: "",
+          status: "idle" as SceneStatus,
+        })),
+      );
+      // The joined narration becomes the voiceover script (editable below).
+      setScript(String(data.script ?? beats.map((b) => b.vo).join(" ")));
+      setVoiceoverUrl(null);
+    } catch {
+      setSbError("request_failed");
+    } finally {
+      setSbLoading(false);
+    }
+  }
+
+  async function generateVoiceover() {
+    if (!script.trim()) return;
+    setVoiceLoading(true);
+    setVoiceError(null);
+    setVoiceoverUrl(null);
+    try {
+      const res = await fetch("/api/video/voiceover", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: script, voice }),
+      });
+      const data = await res.json();
+      if (data.ok && data.url) setVoiceoverUrl(data.url);
+      else setVoiceError(data.error ?? "voiceover_failed");
+    } catch {
+      setVoiceError("request_failed");
+    } finally {
+      setVoiceLoading(false);
+    }
+  }
+
   async function assemble() {
     const clips = scenes
       .filter((s) => s.clipUrl)
@@ -176,7 +247,7 @@ export function VideoComposer({
       const res = await fetch("/api/video/render", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clips, aspect }),
+        body: JSON.stringify({ clips, aspect, voiceoverUrl: voiceoverUrl ?? undefined }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -248,9 +319,42 @@ export function VideoComposer({
           <input
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="What's this video about? (optional — lets the brain art-direct each clip in your brand's look)"
+            placeholder="What's this video about? (e.g. Why UK trades are switching to an AI receptionist)"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
           />
+        </div>
+        {/* Auto-storyboard — the length lever: brain writes an N-beat narration
+            and turns each beat into a scene. */}
+        <div className="flex w-full flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+          <span className="text-sm font-medium text-slate-700">✨ Auto-storyboard</span>
+          <label className="text-xs text-slate-500">length</label>
+          <select
+            value={targetSeconds}
+            onChange={(e) => setTargetSeconds(Number(e.target.value))}
+            className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+          >
+            <option value={16}>~15s (4 scenes)</option>
+            <option value={24}>~25s (6 scenes)</option>
+            <option value={32}>~30s (8 scenes)</option>
+            <option value={40}>~40s (10 scenes)</option>
+          </select>
+          <button
+            onClick={buildStoryboard}
+            disabled={sbLoading || !aiConfigured || !topic.trim()}
+            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
+          >
+            {sbLoading ? "Writing…" : "Build scenes + script"}
+          </button>
+          <span className="text-xs text-slate-400">
+            Writes the narration and builds the scenes — then generate the clips below.
+          </span>
+          {sbError && (
+            <p className="w-full text-xs text-red-600">
+              {sbError === "no_context"
+                ? "Add Business Context for this brand first."
+                : `Couldn't build: ${sbError}`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -357,11 +461,62 @@ export function VideoComposer({
         </button>
       </div>
 
+      {/* Voiceover */}
+      <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-slate-700">🎙️ Voiceover</h4>
+          <select
+            value={voice}
+            onChange={(e) => setVoice(e.target.value)}
+            className="rounded-lg border border-slate-300 px-2 py-1 text-xs capitalize"
+          >
+            {TTS_VOICES.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </div>
+        <textarea
+          value={script}
+          onChange={(e) => {
+            setScript(e.target.value);
+            setVoiceoverUrl(null);
+          }}
+          rows={3}
+          placeholder="The spoken narration. Auto-storyboard fills this in — or write your own."
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={generateVoiceover}
+            disabled={voiceLoading || !aiConfigured || !script.trim()}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            {voiceLoading ? "Generating…" : voiceoverUrl ? "Regenerate voiceover" : "Generate voiceover"}
+          </button>
+          {voiceoverUrl && <span className="text-xs font-medium text-emerald-600">ready ✓</span>}
+        </div>
+        {voiceError && <p className="text-xs text-red-600">Error: {voiceError}</p>}
+        {voiceoverUrl && (
+          <audio src={voiceoverUrl} controls className="w-full max-w-xs">
+            <track kind="captions" />
+          </audio>
+        )}
+        <p className="text-[11px] text-slate-400">
+          The voiceover is mixed under the video on assembly. Aim for roughly one
+          scene per spoken sentence so the video is long enough to carry it.
+        </p>
+      </div>
+
       {/* Assemble */}
       <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-slate-700">Assemble video</h4>
-          <span className="text-xs text-slate-400">{readyCount} clip{readyCount === 1 ? "" : "s"} ready</span>
+          <span className="text-xs text-slate-400">
+            {readyCount} clip{readyCount === 1 ? "" : "s"} ready
+            {voiceoverUrl ? " · voiceover on" : ""}
+          </span>
         </div>
         <button
           onClick={assemble}
