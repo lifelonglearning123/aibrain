@@ -44,9 +44,14 @@ async function sfetch(path: string, init: RequestInit): Promise<Response> {
   });
 }
 
-/** Submit a render that plays the given clips back-to-back. Returns a render id to poll. */
+/**
+ * Submit a render that plays the given clips back-to-back. Returns a render id.
+ * An optional per-clip `length` (seconds) trims the clip to that duration —
+ * used to cut the drift/intruding-object tail that AI video models add near the
+ * end of a shot. Omit it (or pass 0) to play the clip's full natural length.
+ */
 export async function submitRender(
-  clips: { url: string }[],
+  clips: { url: string; length?: number }[],
   aspect: string,
 ): Promise<RenderSubmit> {
   if (!(await shotstackConfig()).configured) return { ok: false, error: "not_configured" };
@@ -55,7 +60,7 @@ export async function submitRender(
   const timelineClips = clips.map((c) => ({
     asset: { type: "video", src: c.url },
     start: "auto",
-    length: "auto",
+    length: c.length && c.length > 0 ? Number(c.length.toFixed(2)) : "auto",
   }));
 
   const body = {

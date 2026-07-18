@@ -43,6 +43,8 @@ export interface SubmitResult {
   id?: string;
   url?: string;
   error?: string;
+  /** The generated first-frame still — reusable as a reference for a later beat. */
+  stillUrl?: string;
 }
 export interface StatusResult {
   status: string;
@@ -108,9 +110,16 @@ async function pollRequest(id: string, deadlineMs = 90_000): Promise<ImageResult
   const deadline = Date.now() + deadlineMs;
   while (Date.now() < deadline) {
     await sleep(3000);
-    const st = await hfetch(`/requests/${encodeURIComponent(id)}/status`, { method: "GET" });
-    if (!st.ok) continue;
-    const sd: any = await st.json().catch(() => ({}));
+    // A transient network blip must not sink an in-flight render — keep polling
+    // until the deadline; only an explicit failure status is terminal.
+    let sd: any;
+    try {
+      const st = await hfetch(`/requests/${encodeURIComponent(id)}/status`, { method: "GET" });
+      if (!st.ok) continue;
+      sd = await st.json().catch(() => ({}));
+    } catch {
+      continue;
+    }
     const url = extractUrl(sd);
     if (url) return { ok: true, url };
     if (FAILED.includes(String(sd?.status ?? "").toLowerCase())) {
@@ -165,6 +174,9 @@ export async function submitImage(params: {
 export async function generateImage(params: {
   prompt: string;
   aspect?: string;
+  enhance?: boolean;
+  /** Max time to wait for the render (default 90s; the video path allows more). */
+  deadlineMs?: number;
 }): Promise<ImageResult> {
   const { configured, imageModel } = await higgsfieldConfig();
   if (!configured) return { ok: false, error: "not_configured" };
@@ -176,40 +188,67 @@ export async function generateImage(params: {
     if (immediate) return { ok: true, url: immediate };
     const id = extractId(data);
     if (!id) return { ok: false, error: "no_request_id" };
-    return await pollRequest(String(id));
+    return await pollRequest(String(id), params.deadlineMs ?? 90_000);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "image_failed" };
   }
 }
 
-/** Generate an AI video clip: make an image from the prompt, then animate it (dop). */
+/**
+ * Generate an AI video clip: make a still from the prompt, then animate it (dop).
+ * When the video director supplies an art-directed stillPrompt + motionPrompt
+ * they're used for the two steps separately (enhancer off — see submitImage);
+ * otherwise the raw prompt drives both (enhancer on). A refImageUrl lets a
+ * later beat reuse an earlier frame as its base for a consistent series.
+ */
 export async function submitVideo(params: {
   prompt: string;
   aspect?: string;
+  stillPrompt?: string;
+  motionPrompt?: string;
+  refImageUrl?: string;
 }): Promise<SubmitResult> {
   const { configured, videoModel } = await higgsfieldConfig();
   if (!configured) return { ok: false, error: "not_configured" };
+  const directed = Boolean(params.stillPrompt || params.motionPrompt);
+  const stillPrompt = params.stillPrompt || params.prompt;
+  const motionPrompt = params.motionPrompt || params.prompt;
   try {
-    const img = await generateImage({ prompt: params.prompt, aspect: params.aspect });
-    if (!img.ok || !img.url) return { ok: false, error: img.error ?? "image_step_failed" };
+    // A reference frame from an earlier beat is reused directly; otherwise
+    // generate this beat's still (art-directed → enhancer off).
+    let stillUrl = params.refImageUrl;
+    if (!stillUrl) {
+      const img = await generateImage({
+        prompt: stillPrompt,
+        aspect: params.aspect,
+        enhance: !directed,
+        // The video route allows 300s total — give the still ample room so a
+        // slow render doesn't sink the whole clip.
+        deadlineMs: 180_000,
+      });
+      if (!img.ok || !img.url) return { ok: false, error: img.error ?? "image_step_failed" };
+      stillUrl = img.url;
+    }
 
+    // Higgsfield expects the args under "params" (same wrapper as text2image);
+    // it auto-fills seed + motions. Verified live against dop-turbo.
     const res = await hfetch(`/v1/image2video/dop`, {
       method: "POST",
       body: JSON.stringify({
-        input: {
+        params: {
           model: videoModel,
-          prompt: params.prompt,
-          input_images: [{ type: "image_url", image_url: img.url }],
+          prompt: motionPrompt,
+          input_images: [{ type: "image_url", image_url: stillUrl }],
         },
       }),
     });
     if (!res.ok) return { ok: false, error: await readError(res) };
     const data: any = await res.json().catch(() => ({}));
     const immediate = extractUrl(data);
-    if (immediate) return { ok: true, url: immediate };
+    if (immediate) return { ok: true, url: immediate, stillUrl };
     const id = extractId(data);
-    if (!id) return { ok: false, error: "no_request_id" };
-    return { ok: true, id };
+    if (!id) return { ok: false, error: "no_request_id", stillUrl };
+    return { ok: true, id, stillUrl };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "video_failed" };
   }
@@ -220,13 +259,15 @@ export async function checkGeneration(id: string): Promise<StatusResult> {
   if (!configured) return { status: "error", error: "not_configured" };
   try {
     const res = await hfetch(`/requests/${encodeURIComponent(id)}/status`, { method: "GET" });
-    if (!res.ok) return { status: "error", error: `http_${res.status}` };
+    // Transient transport errors (a blip, or a 5xx) are NOT terminal — report
+    // "pending" so the client keeps polling instead of killing a good render.
+    if (!res.ok) return { status: "pending", error: `http_${res.status}` };
     const sd: any = await res.json().catch(() => ({}));
     const url = extractUrl(sd);
     const status = String(sd?.status ?? (url ? "completed" : "in_progress")).toLowerCase();
     return { status, url };
   } catch (e) {
-    return { status: "error", error: e instanceof Error ? e.message : "status_failed" };
+    return { status: "pending", error: e instanceof Error ? e.message : "status_failed" };
   }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */

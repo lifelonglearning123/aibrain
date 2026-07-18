@@ -13,7 +13,15 @@ interface Scene {
   jobId?: string;
   status: SceneStatus;
   error?: string;
+  /** True once the brain art-directed this clip from the brand + topic. */
+  directed?: boolean;
+  /** Real clip length (s), read from the preview — used to trim end-drift. */
+  duration?: number;
 }
+
+// AI video models tend to add an intruding object / scene-drift in the last
+// second or so of a clip. Trim that tail off AI clips on assembly.
+const AI_TAIL_TRIM_S = 1.0;
 
 const VIDEO_PLATFORMS = ["instagram", "tiktok", "youtube", "facebook", "x", "linkedin"];
 
@@ -33,6 +41,9 @@ export function VideoComposer({
   const [brand, setBrand] = useState<EntityKey>(initialEntity);
   const brandOptions = ENTITIES.filter((e) => allowedBrands.includes(e.key));
   const [aspect, setAspect] = useState("9:16");
+  // What the video is about — gives the art director the narrative context so
+  // each clip's still is grounded in the post, not a bare scene description.
+  const [topic, setTopic] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
 
   // Assembly
@@ -80,7 +91,8 @@ export function VideoComposer({
         const res = await fetch(`/api/video/clip/status?id=${encodeURIComponent(jobId)}`);
         const data = await res.json();
         if (data.url) return update(id, { clipUrl: data.url, status: "ready" });
-        if (data.status === "failed" || data.status === "error") {
+        // Only an explicit failure ends it — "pending"/transport errors keep polling.
+        if (["failed", "nsfw", "cancelled", "canceled"].includes(data.status)) {
           return update(id, { status: "error", error: data.error ?? "failed" });
         }
       } catch {
@@ -96,13 +108,22 @@ export function VideoComposer({
       const res = await fetch("/api/video/clip", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt: scene.prompt, aspect }),
+        // Send the brand + topic so the clip is art-directed in the brand's
+        // look (not a raw prompt). The scene text is the shot concept.
+        body: JSON.stringify({
+          entity: brand,
+          concept: scene.prompt,
+          postText: topic || undefined,
+          aspect,
+        }),
       });
       const data = await res.json();
       if (!data.ok) return update(scene.id, { status: "error", error: data.error ?? "failed" });
-      if (data.url) return update(scene.id, { clipUrl: data.url, status: "ready" });
+      if (data.url) {
+        return update(scene.id, { clipUrl: data.url, status: "ready", directed: data.directed });
+      }
       if (data.id) {
-        update(scene.id, { jobId: data.id });
+        update(scene.id, { jobId: data.id, directed: data.directed });
         pollClip(scene.id, data.id);
       }
     } catch {
@@ -136,7 +157,16 @@ export function VideoComposer({
   }
 
   async function assemble() {
-    const clips = scenes.filter((s) => s.clipUrl).map((s) => ({ url: s.clipUrl }));
+    const clips = scenes
+      .filter((s) => s.clipUrl)
+      .map((s) => {
+        // Trim the drift tail off AI clips when we know their length.
+        const trimmed =
+          s.source === "ai" && s.duration && s.duration > AI_TAIL_TRIM_S + 0.5
+            ? s.duration - AI_TAIL_TRIM_S
+            : undefined;
+        return { url: s.clipUrl, length: trimmed };
+      });
     if (clips.length === 0) return;
     setRendering(true);
     setRenderError(null);
@@ -214,6 +244,14 @@ export function VideoComposer({
           <option value="1:1">1:1</option>
           <option value="16:9">16:9</option>
         </select>
+        <div className="w-full">
+          <input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="What's this video about? (optional — lets the brain art-direct each clip in your brand's look)"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+          />
+        </div>
       </div>
 
       {/* Scenes */}
@@ -252,13 +290,18 @@ export function VideoComposer({
                     placeholder="Describe this clip (e.g. slow pan over a workshop, warm light)…"
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
                   />
-                  <button
-                    onClick={() => generate(s)}
-                    disabled={s.status === "generating" || !aiConfigured || !s.prompt}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    {s.status === "generating" ? "Generating… (1–3 min)" : "Generate clip"}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => generate(s)}
+                      disabled={s.status === "generating" || !aiConfigured || !s.prompt}
+                      className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      {s.status === "generating" ? "Generating… (1–3 min)" : "Generate clip"}
+                    </button>
+                    {s.directed && s.status !== "generating" && (
+                      <span className="text-xs font-medium text-violet-600">🎨 brand-directed</span>
+                    )}
+                  </div>
                   {!aiConfigured && (
                     <p className="text-xs text-amber-600">
                       Add <code>HIGGSFIELD_API_KEY</code> to generate AI clips.
@@ -276,8 +319,22 @@ export function VideoComposer({
               )}
 
               {s.clipUrl && (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video src={s.clipUrl} controls className="mt-3 w-full max-w-xs rounded-lg border border-slate-200" />
+                <>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    src={s.clipUrl}
+                    controls
+                    onLoadedMetadata={(e) =>
+                      update(s.id, { duration: e.currentTarget.duration })
+                    }
+                    className="mt-3 w-full max-w-xs rounded-lg border border-slate-200"
+                  />
+                  {s.source === "ai" && s.duration && s.duration > AI_TAIL_TRIM_S + 0.5 && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      On assembly, the last {AI_TAIL_TRIM_S}s is trimmed to cut AI end-drift.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           ))}

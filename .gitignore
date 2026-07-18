@@ -25,3 +25,6 @@ next-env.d.ts
 Thumbs.db
 
 .vercel
+
+# Generated demo media (large binaries — keep the plan docs, not the MP4s)
+marketing-plans/**/demo/
