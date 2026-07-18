@@ -83,9 +83,11 @@ export async function draftBrandProfile(
     "billing, pipeline). Ground every field in the evidence; where evidence is thin, give a short " +
     "best-inference and don't overclaim or invent specifics. Write in British English, plain and " +
     "specific. Return ONLY a JSON object with these string keys: oneLiner, offer, icp, pricing, " +
-    "revenueModel, differentiators, voiceTone, priorities, constraints, notes. Use an empty string " +
-    'for any field you genuinely cannot infer. Do NOT write "voiceSamples". For voiceTone, infer ' +
-    "from the winning angles/FAQs if possible, else leave blank.";
+    "revenueModel, differentiators, voiceTone, visualStyle, priorities, constraints, notes. Use an " +
+    'empty string for any field you genuinely cannot infer. Do NOT write "voiceSamples". For ' +
+    "voiceTone, infer from the winning angles/FAQs if possible, else leave blank. For visualStyle, " +
+    "suggest an image style that suits the brand and its audience (palette, photo vs illustration " +
+    "vs 3D, mood, what to avoid).";
 
   const user =
     `BUSINESS: ${name}\n\nEVIDENCE:\n${evidence.join("\n")}\n\n` +

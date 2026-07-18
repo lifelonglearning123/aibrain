@@ -121,6 +121,61 @@ async function resolveGhlUserId(
   }
 }
 
+export interface GhlPublishedPost {
+  id: string;
+  platform: string;
+  text: string;
+  publishedAt: string | null;
+  status: string;
+  likes: number;
+  shares: number;
+  comments: number;
+  previewLink?: string;
+}
+
+/**
+ * Recent posts in the location's Social Planner, WITH per-post engagement —
+ * GHL syncs insights (like/share/comment) onto each post. Covers posts
+ * published from the brain AND directly in GHL. Contract verified live:
+ * POST /posts/list requires skip/limit as *strings*; posts sit at
+ * results.posts[], text at .summary, metrics at .insights.
+ */
+export async function listRecentPosts(
+  entity: EntityKey,
+  limit = 50,
+): Promise<GhlPublishedPost[]> {
+  const cfg = await ghlConfigForEntity(entity);
+  if (!cfg.configured || !cfg.token || !cfg.locationId) return [];
+  try {
+    const res = await ghlFetch(
+      cfg.token,
+      `/social-media-posting/${encodeURIComponent(cfg.locationId)}/posts/list`,
+      {
+        method: "POST",
+        body: JSON.stringify({ skip: "0", limit: String(limit), type: "all" }),
+      },
+    );
+    if (!res.ok) return [];
+    const data: any = await res.json().catch(() => ({}));
+    const items: any[] = data?.results?.posts ?? data?.posts ?? [];
+    return items
+      .map((p: any) => ({
+        id: String(p._id ?? p.id ?? ""),
+        platform: String(p.platform ?? "").toLowerCase(),
+        text: String(p.summary ?? ""),
+        publishedAt: p.publishedAt ?? p.displayDate ?? null,
+        status: String(p.status ?? ""),
+        likes: Number(p.insights?.like) || 0,
+        shares: Number(p.insights?.share) || 0,
+        comments: Number(p.insights?.comment) || 0,
+        previewLink: p.previewLink ? String(p.previewLink) : undefined,
+      }))
+      .filter((p) => p.id);
+  } catch {
+    return [];
+  }
+}
+
 export interface GhlPostResult {
   ok: boolean;
   status: number;

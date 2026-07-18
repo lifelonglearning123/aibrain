@@ -126,14 +126,16 @@ async function pollRequest(id: string, deadlineMs = 90_000): Promise<ImageResult
  * /api/social/image/status. Keeps each serverless request short (no timeout).
  */
 /** V1 text→image request body — wrapped in "params" as /v1/text2image/soul expects. */
-function imageBody(params: { prompt: string; aspect?: string }) {
+function imageBody(params: { prompt: string; aspect?: string; enhance?: boolean }) {
   return JSON.stringify({
     params: {
       prompt: params.prompt,
       width_and_height: soulSize(params.aspect),
       quality: "1080p",
       batch_size: 1,
-      enhance_prompt: true,
+      // Off when our art director wrote the prompt — Higgsfield's generic
+      // enhancer is what produces the stock "AI look".
+      enhance_prompt: params.enhance ?? true,
     },
   });
 }
@@ -141,6 +143,7 @@ function imageBody(params: { prompt: string; aspect?: string }) {
 export async function submitImage(params: {
   prompt: string;
   aspect?: string;
+  enhance?: boolean;
 }): Promise<SubmitResult> {
   const { configured, imageModel } = await higgsfieldConfig();
   if (!configured) return { ok: false, error: "not_configured" };

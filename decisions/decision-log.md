@@ -5,7 +5,83 @@ Append important decisions here so the brain (and future-you) remember *what* wa
 
 ---
 
-## 2026-07-07 — Social v1: AI drafting engine (from Chao's workflow ref)
+## 2026-07-17 — Social v4: image quality — AI art director + branded graphic cards
+
+- **Chao's diagnosis (asked):** images are generic AI look + off-brand + bad/no text; wants ALL
+  formats (branded text graphics, photos, illustration/3D), brain picks per post; approved test spend.
+- **Root cause found:** the ten-word concept went to Higgsfield verbatim with `enhance_prompt: true`
+  — Higgsfield's generic enhancer WAS the art direction. No brand visual identity existed anywhere.
+- **Built:**
+  - `visualStyle` field in Business Context (palette/imagery type/mood/don'ts; auto-draftable —
+    added to the profile drafter's keys) → feeds every image.
+  - `lib/ai/image-director.ts` — gpt-5.5 art director: post + concept + visual identity →
+    either a rich diffusion prompt (photo/illustration: subject, composition, lens, lighting,
+    brand-palette grading, "no text/logos") or card copy for a graphic. Auto-picks format, or the
+    user forces one (new Auto/Graphic/Photo/Illustration chips in the composer).
+  - `lib/social-card.tsx` — branded graphic renderer (satori via next/og; crisp text is RENDERED,
+    not diffused): dark card, brand accent, stat + headline + sub layouts → PNG uploaded to new
+    public Supabase bucket `social-images` → URL usable as GHL post media. Free (no image-API cost).
+  - `/api/social/image` reworked: art-direct → graphic renders inline (instant url) / diffusion gets
+    the directed prompt with `enhance_prompt: false` (raw-concept fallback keeps enhancer on).
+- **Verified LIVE (A/B, real spend, images inspected):** baseline (raw concept) produced an
+  off-brand vintage bakery-kiosk scene with an antique desk phone; art-directed produced a modern
+  home-interior scene — tradesperson with toolbox + homeowner, ringing phone in foreground,
+  brand-blue accents, no garbled text — exactly the post's story. Graphic card rendered pixel-perfect
+  ("24/7 — Every missed call…" in macaws blue). tsc green; route 401-guards.
+- **Caveat:** no brand has `visualStyle` filled yet — director falls back to a clean default around
+  the entity accent colour. Filling it (or re-running "Draft with AI" on Context) sharpens results.
+- **Next candidates:** batch of 2–4 variants to pick from; image approve/reject feedback into
+  `content_feedback`; suggestion cards could carry a per-idea format hint.
+
+## 2026-07-16 — Social v3: real performance feeds suggestions (closes the outcome loop)
+
+- **Chao's ask:** feed real performance data back into the social suggestions.
+- **Live API discovery first (probed with real per-brand tokens, read-only):** GHL
+  `POST /social-media-posting/{locationId}/posts/list` requires **string** `skip`/`limit`
+  (422 otherwise) and returns per-post `insights: {like, share, comment}`, `summary` (text),
+  `status`, `publishedAt`, `previewLink` — engagement per post, no separate stats API needed, and it
+  covers posts published outside the brain too. So **no new table/cron: GHL is the source of truth,
+  read live**. (`POST /social-media-posting/statistics` exists but is account-aggregate + undocumented
+  body — skipped.)
+- **Built:** `listRecentPosts()` in `ghl-social.ts` (probe-verified contract, fails to `[]`).
+  `lib/social-performance.ts` — engagement = shares×3 + comments×2 + likes (distribution >
+  engagement > vanity, per the goal-weighting philosophy); `top` = best engagement, `flops` = zero
+  engagement after 48h live (fresh posts aren't punished); same message on several platforms counts
+  once (top keeps its best instance; a message that scored anywhere is never a flop); posts <40 chars
+  ignored as test junk (real "test"/"blaH" posts found on Leonardo). `performancePrompt()` block
+  injected into **suggestions** (weighted heavily, cited in each idea's "why") and **drafts**; the
+  "don't repeat" list now uses real published posts. New **Recent post performance** panel on Social
+  (Suspense-streamed, per-post 👍💬↗ + "top" badge + preview links).
+- **Verified LIVE on all 3 brands** via the actual code path (tsx): macaws 43 published/1 top/5 flops;
+  artificial-ignorance 50/4/3 (TikTok "AI isn't taking your jobs" angle wins); leonardo 46/5/5
+  (LinkedIn story/myth posts with shares win). tsc green; page + suggest route behave on dev server.
+- **Insight from the data:** AI-brand's TikTok reaction-style posts and Leonardo's LinkedIn
+  story/objection posts are the proven angles — suggestions will now lean into these automatically.
+- **Next candidates:** distil performance patterns into durable `brand_knowledge` during the nightly
+  learning run; pull GHL's account-level statistics endpoint once documented (impressions/reach).
+
+## 2026-07-16 — Social v2: suggestion-first ("the brain suggests, you approve")
+
+- **Chao's ask:** now the brain knows each business (Business Context), the AI should suggest
+  everything on Social — the user only approves or edits.
+- **Built:** `lib/ai/suggest.ts` + `/api/social/suggest` — proposes 5 grounded post ideas per brand
+  (topic + why + best-fit platforms + image prompt) from the Business Context profile + learned
+  customer evidence (pain points/objections/winning angles, converts-first), skipping recently
+  approved/edited posts (reads `content_feedback`). Returns `no_context` when the brand has no
+  profile/knowledge → UI nudges to `/dashboard/context`.
+- **Draft route:** `brandVoice` now optional — when blank, the server builds the voice from the
+  brand's Business Context (`profilePrompt` + `voiceBlock`, incl. the owner's real writing samples).
+  Manual voice remains an **override** (still saved per-brand in localStorage — note: a previously
+  saved voice therefore wins over the profile until cleared in "Voice override").
+- **Composer reworked (suggestion-first):** picking a brand auto-fetches "What the brain suggests
+  you post" cards with one-click **Draft this** (uses the suggestion's platforms + pre-fills the
+  image prompt); "More ideas ↻" refreshes. Manual topic + voice override demoted to collapsed
+  sections. Publish button renamed **Approve & publish**. Existing approve/edit/reject preference
+  loop unchanged — so approving/editing suggestions keeps sharpening future drafts.
+- **Page:** new status chip "Business context: n/3 brands" (links to Context when incomplete).
+- **Verified:** `tsc --noEmit` green; dev server on :3006 — social page 200 (auth-redirects when
+  logged out, correct), `/api/social/suggest` 401-guards. Live suggestions need Chao logged in
+  (OpenAI + profile present). (`next lint` is broken repo-wide in Next 16 — pre-existing.)
 
 - **Context:** Chao shared a Claude-Code+MCP social workflow (brand voice → Higgsfield images →
   Blotato multi-platform publish → schedule). Translated the *process* into our custom app:

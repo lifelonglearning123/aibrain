@@ -19,6 +19,8 @@ export interface BrandProfile {
   differentiators?: string;
   voiceTone?: string;
   voiceSamples?: string;
+  /** Visual identity for generated images — palette, imagery type, mood, don'ts. */
+  visualStyle?: string;
   priorities?: string;
   constraints?: string;
   notes?: string;
@@ -49,6 +51,7 @@ export const PROFILE_FIELDS: ProfileField[] = [
   { key: "differentiators", group: "Positioning", label: "What makes you different", hint: "Why customers choose you over the alternatives; your proof/mechanism.", rows: 3 },
   { key: "voiceTone", group: "Voice", label: "Your tone of voice", hint: "e.g. direct, warm, no jargon, British spelling, short sentences.", rows: 2 },
   { key: "voiceSamples", group: "Voice", label: "Paste 1–2 things you've written (verbatim)", hint: "A real post or client email — so drafts sound like YOU, not generic AI. Don't edit them.", rows: 6 },
+  { key: "visualStyle", group: "Voice", label: "Visual style for images", hint: "Colours (hex if you have them), imagery type (photo / illustration / 3D), mood, things to avoid — used whenever the brain generates post images.", rows: 3 },
   { key: "priorities", group: "Priorities", label: "Top 2–3 priorities right now", hint: "What matters most this quarter, and why.", rows: 3 },
   { key: "constraints", group: "Priorities", label: "What would break first if you 10×'d?", hint: "The bottleneck — helps the brain spot the real constraint.", rows: 2 },
   { key: "notes", group: "Other", label: "Anything else the brain should know", hint: "Context that doesn't fit above.", rows: 3 },

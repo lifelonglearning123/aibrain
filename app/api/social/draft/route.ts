@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { draftPosts } from "@/lib/ai/draft";
 import { openaiConfig } from "@/lib/ai/openai";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
+import { getBrandProfile, profilePrompt, voiceBlock, brandName } from "@/lib/brand-profile";
+import { getPostPerformance, performancePrompt } from "@/lib/social-performance";
 import { getPreferenceGuidance } from "@/lib/preferences";
 import { resolveEntity, ALL, type EntityKey } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
@@ -28,12 +30,12 @@ export async function POST(req: Request) {
     entity?: string;
   };
   const topic = (body.topic ?? "").trim();
-  const brandVoice = (body.brandVoice ?? "").trim();
+  let brandVoice = (body.brandVoice ?? "").trim();
   const platforms = Array.isArray(body.platforms) ? body.platforms : [];
 
-  if (!topic || !brandVoice || platforms.length === 0) {
+  if (!topic || platforms.length === 0) {
     return NextResponse.json(
-      { ok: false, error: "topic, brandVoice and platforms are required" },
+      { ok: false, error: "topic and platforms are required" },
       { status: 400 },
     );
   }
@@ -43,21 +45,52 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "forbidden_brand" }, { status: 403 });
   }
 
+  // No manual voice given → the brain supplies it from the brand's Business
+  // Context profile (offer, ICP, tone, the owner's real writing samples).
+  let usedProfile = false;
+  if (!brandVoice) {
+    if (entity === ALL) {
+      return NextResponse.json({ ok: false, error: "brand_required" }, { status: 400 });
+    }
+    const profile = await getBrandProfile(entity as EntityKey);
+    brandVoice = [profilePrompt(profile, brandName(entity as EntityKey)), voiceBlock(profile)]
+      .filter(Boolean)
+      .join("\n\n");
+    usedProfile = brandVoice.length > 0;
+    if (!brandVoice) {
+      return NextResponse.json({ ok: false, error: "no_brand_context" }, { status: 400 });
+    }
+  }
+
   try {
     // Inject what the brain has learned for this brand. Shared cross-brand
     // portfolio insights are only mixed in for owners.
     const includeShared = access ? access.isOwner : true;
-    const knowledge = await getBrandKnowledge(entity === ALL ? "" : entity, { includeShared });
+    const [knowledge, preferences, perf] = await Promise.all([
+      getBrandKnowledge(entity === ALL ? "" : entity, { includeShared }),
+      // Learned style preferences (from what you approve/edit/reject).
+      entity === ALL ? Promise.resolve("") : getPreferenceGuidance(entity, "social"),
+      // Real engagement on published posts (live from GHL).
+      entity === ALL
+        ? Promise.resolve({ posts: [], top: [], flops: [] })
+        : getPostPerformance(entity as EntityKey),
+    ]);
     const insights = knowledgePrompt(knowledge);
-    // Inject learned style preferences (from what you approve/edit/reject).
-    const preferences = entity === ALL ? "" : await getPreferenceGuidance(entity, "social");
 
-    const posts = await draftPosts({ brandVoice, topic, platforms, insights, preferences });
+    const posts = await draftPosts({
+      brandVoice,
+      topic,
+      platforms,
+      insights,
+      preferences,
+      performance: performancePrompt(perf),
+    });
     return NextResponse.json({
       ok: true,
       posts,
       usedInsights: insights.length > 0,
       usedPreferences: preferences.length > 0,
+      usedProfile,
     });
   } catch (e) {
     return NextResponse.json(

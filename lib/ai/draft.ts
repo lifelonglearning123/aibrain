@@ -30,8 +30,9 @@ export async function draftPosts(params: {
   platforms: string[];
   insights?: string;
   preferences?: string;
+  performance?: string;
 }): Promise<Draft[]> {
-  const { brandVoice, topic, platforms, insights, preferences } = params;
+  const { brandVoice, topic, platforms, insights, preferences, performance } = params;
   const rules = platforms
     .map((p) => `- ${p}: ${PLATFORM_RULES[p] ?? "platform-appropriate best practice"}`)
     .join("\n");
@@ -52,10 +53,15 @@ export async function draftPosts(params: {
     ? `HOW THIS USER LIKES DRAFTS (learned from what they approve/edit/reject — match this closely):\n${preferences}\n\n`
     : "";
 
+  const perf = performance
+    ? `${performance}\nWrite in the style of the top performers; avoid what flopped.\n\n`
+    : "";
+
   const user =
     `BRAND VOICE:\n${brandVoice}\n\n` +
     learned +
     prefs +
+    perf +
     `TOPIC: ${topic}\n\n` +
     `Write one post for each of these platforms, each tailored to its norms:\n${rules}\n\n` +
     `Return JSON with a "posts" array, one entry per requested platform.`;
