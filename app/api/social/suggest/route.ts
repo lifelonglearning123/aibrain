@@ -4,6 +4,7 @@ import { openaiConfig } from "@/lib/ai/openai";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
 import { getPostPerformance, performancePrompt } from "@/lib/social-performance";
 import { getBrandProfile, profilePrompt, voiceBlock, brandName } from "@/lib/brand-profile";
+import { VOICE_BENEFITS } from "@/lib/ai/voice-benefits";
 import { resolveEntity, ALL, type EntityKey } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
       voice: voiceBlock(profile),
       insights,
       performance: performancePrompt(perf),
+      benefits: VOICE_BENEFITS,
       recentPosts: recent,
     });
     return NextResponse.json({

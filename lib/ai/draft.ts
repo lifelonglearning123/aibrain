@@ -31,18 +31,27 @@ export async function draftPosts(params: {
   insights?: string;
   preferences?: string;
   performance?: string;
+  /** Verified benefit facts to teach with (attributed). */
+  benefits?: string;
 }): Promise<Draft[]> {
-  const { brandVoice, topic, platforms, insights, preferences, performance } = params;
+  const { brandVoice, topic, platforms, insights, preferences, performance, benefits } = params;
   const rules = platforms
     .map((p) => `- ${p}: ${PLATFORM_RULES[p] ?? "platform-appropriate best practice"}`)
     .join("\n");
 
   const system =
     "You are an expert social media copywriter. Write posts strictly in the user's brand voice, " +
-    "tailored to each platform's norms. Never invent facts or claims not supported by the brand voice. " +
-    "If the user's learned style preferences are provided, follow them closely — they reflect how this " +
-    "specific user edits drafts. " +
+    "tailored to each platform's norms.\n\n" +
+    "BE VALUE-LED, NOT SALESY (important): the post should GIVE the reader something — a useful " +
+    "insight, tip, or benefit they gain just by reading — not pitch the product. Lead with a strong " +
+    "hook and the reader's world; teach one idea; make the benefit the point, not the feature. At " +
+    "most ONE soft, low-pressure CTA (often none — a good post can just be useful). Never hard-sell.\n" +
+    "Never invent facts or claims not supported by the brand voice or the verified facts provided. " +
+    "When you use a statistic, ATTRIBUTE it to its named source; never use a figure marked as not to " +
+    "be cited. If the user's learned style preferences are provided, follow them closely.\n" +
     'Return ONLY JSON of the form {"posts":[{"platform":"<name>","text":"<post>"}]}.';
+
+  const bene = benefits ? `${benefits}\n\n` : "";
 
   const learned = insights
     ? `WHAT WE'VE LEARNED FROM REAL CUSTOMERS (ground the posts in this — speak to these pain ` +
@@ -59,11 +68,12 @@ export async function draftPosts(params: {
 
   const user =
     `BRAND VOICE:\n${brandVoice}\n\n` +
+    bene +
     learned +
     prefs +
     perf +
     `TOPIC: ${topic}\n\n` +
-    `Write one post for each of these platforms, each tailored to its norms:\n${rules}\n\n` +
+    `Write one VALUE-LED post for each of these platforms, each tailored to its norms:\n${rules}\n\n` +
     `Return JSON with a "posts" array, one entry per requested platform.`;
 
   const json = (await chatJSON(system, user)) as { posts?: unknown } | null;

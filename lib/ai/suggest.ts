@@ -21,21 +21,23 @@ export async function suggestPosts(params: {
   voice?: string;
   insights?: string;
   performance?: string;
+  benefits?: string;
   recentPosts?: string[];
   count?: number;
 }): Promise<PostSuggestion[]> {
-  const { brandName, context, voice, insights, performance, recentPosts, count = 5 } = params;
+  const { brandName, context, voice, insights, performance, benefits, recentPosts, count = 5 } = params;
 
   const system =
     "You are the social media strategist for this business. Propose specific, ready-to-draft " +
-    "post ideas grounded ONLY in the business context and learned customer evidence provided — " +
-    "never invent products, claims or numbers. Prioritise ideas that advance the stated " +
-    "priorities and speak to proven pain points, objections and winning angles. When real post " +
-    "performance is provided, weight it heavily: propose more of what earned engagement and " +
-    "avoid what flopped — and say so in the idea's \"why\". Each idea must " +
-    "be concrete enough to draft from directly (a specific angle, not a vague theme). " +
+    "post ideas grounded ONLY in the business context, verified facts and learned customer evidence " +
+    "provided — never invent products, claims or numbers.\n\n" +
+    "BE VALUE-LED, NOT SALESY: most ideas (aim ~80%) should GIVE the audience value — a useful " +
+    "insight, tip, how-to, myth-buster, or benefit backed by a verified fact — NOT pitch the product. " +
+    "Only a minority (~20%) should be direct offers/CTAs. Each idea must be concrete enough to draft " +
+    "from directly (a specific angle, not a vague theme). When real post performance is provided, " +
+    "weight it: propose more of what earned engagement, avoid what flopped, and say so in \"why\". " +
     'Return ONLY JSON of the form {"suggestions":[{"topic":"<one-line post idea>",' +
-    '"why":"<one sentence: which evidence/context/performance this is grounded in and why it will land>",' +
+    '"why":"<one sentence: which evidence/fact/performance this is grounded in and why it will land>",' +
     '"platforms":["<best-fit platforms>"],"imagePrompt":"<short visual concept for an image>"}]}.';
 
   const recent = recentPosts?.length
@@ -47,13 +49,14 @@ export async function suggestPosts(params: {
   const user =
     `BUSINESS: ${brandName}\n\n` +
     (context ? `${context}\n\n` : "") +
+    (benefits ? `${benefits}\n\n` : "") +
     (insights ? `WHAT WE'VE LEARNED FROM REAL CUSTOMERS:\n${insights}\n\n` : "") +
     (performance ? `${performance}\n\n` : "") +
     (voice ? `BRAND VOICE (flavour the ideas to suit it):\n${voice}\n\n` : "") +
     recent +
     `Supported platforms: ${PLATFORMS.join(", ")}.\n\n` +
-    `Propose ${count} post ideas as JSON with a "suggestions" array. Vary the angle across ` +
-    `ideas (pain point, proof/differentiator, objection-buster, story, priority push).`;
+    `Propose ${count} post ideas as JSON with a "suggestions" array. Lead with value/benefit ideas ` +
+    `(teach, tips, myth-busters, benefit + verified fact); include at most one direct-offer idea.`;
 
   const json = (await chatJSON(system, user)) as { suggestions?: unknown } | null;
   const suggestions = json?.suggestions;

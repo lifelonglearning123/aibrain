@@ -5,6 +5,7 @@ import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
 import { getBrandProfile, profilePrompt, voiceBlock, brandName } from "@/lib/brand-profile";
 import { getPostPerformance, performancePrompt } from "@/lib/social-performance";
 import { getPreferenceGuidance } from "@/lib/preferences";
+import { VOICE_BENEFITS } from "@/lib/ai/voice-benefits";
 import { resolveEntity, ALL, type EntityKey } from "@/lib/entities";
 import { supabaseConfig } from "@/lib/supabase/config";
 import { getAccess } from "@/lib/access";
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
       insights,
       preferences,
       performance: performancePrompt(perf),
+      benefits: VOICE_BENEFITS,
     });
     return NextResponse.json({
       ok: true,
