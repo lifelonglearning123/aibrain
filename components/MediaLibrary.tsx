@@ -69,6 +69,14 @@ export function MediaLibrary({
       const supabase = createClient();
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const mb = Math.round(file.size / (1024 * 1024));
+        // Fail fast on clearly-too-big files (storage global limit is ~50 MB).
+        if (file.size > 250 * 1024 * 1024) {
+          setError(
+            `"${file.name}" is ${mb} MB — too large to upload. Trim or compress it (aim under ~50 MB), or raise the limit in Supabase → Storage settings.`,
+          );
+          break;
+        }
         setProgress(`Uploading ${file.name}${files.length > 1 ? ` (${i + 1}/${files.length})` : ""}…`);
         // 1. Mint a signed upload URL server-side (brand-access guarded).
         const signRes = await fetch("/api/media/upload-url", {
@@ -86,7 +94,11 @@ export function MediaLibrary({
           .from(MEDIA_BUCKET)
           .uploadToSignedUrl(sign.path, sign.token, file);
         if (upErr) {
-          setError(upErr.message);
+          setError(
+            /maximum allowed size|exceeded|too large|413/i.test(upErr.message)
+              ? `"${file.name}" is ${mb} MB — over the storage upload limit (~50 MB). Trim/compress it, or raise the limit in Supabase → Storage settings.`
+              : upErr.message,
+          );
           break;
         }
       }
@@ -129,11 +141,11 @@ export function MediaLibrary({
         {progress && <span className="text-xs text-slate-500">{progress}</span>}
         {!uploading && !loading && (
           <span className="text-xs text-slate-400">
-            {items.length} item{items.length === 1 ? "" : "s"}
+            {items.length} item{items.length === 1 ? "" : "s"} · max ~50 MB each
           </span>
         )}
       </div>
-      {error && <p className="text-xs text-red-600">Error: {error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
       {loading ? (
         <p className="text-sm text-slate-400">Loading…</p>
