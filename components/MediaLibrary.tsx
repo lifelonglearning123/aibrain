@@ -42,6 +42,7 @@ export function MediaLibrary({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [limitMb, setLimitMb] = useState(50);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = useCallback(async () => {
@@ -50,6 +51,7 @@ export function MediaLibrary({
       const res = await fetch(`/api/media?entity=${encodeURIComponent(entity)}`);
       const data = await res.json();
       setItems(data.ok ? data.items : []);
+      if (data.limitMb) setLimitMb(data.limitMb);
     } catch {
       setItems([]);
     } finally {
@@ -70,34 +72,50 @@ export function MediaLibrary({
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const mb = Math.round(file.size / (1024 * 1024));
-        // Fail fast on clearly-too-big files (storage global limit is ~50 MB).
-        if (file.size > 250 * 1024 * 1024) {
+        // Fail fast only on files clearly over the active backend's limit.
+        if (mb > limitMb) {
           setError(
-            `"${file.name}" is ${mb} MB — too large to upload. Trim or compress it (aim under ~50 MB), or raise the limit in Supabase → Storage settings.`,
+            `"${file.name}" is ${mb} MB — over the ${limitMb} MB upload limit.` +
+              (limitMb <= 50
+                ? " Compress it, connect Cloudflare R2 for big files, or raise the Supabase Storage limit."
+                : ""),
           );
           break;
         }
         setProgress(`Uploading ${file.name}${files.length > 1 ? ` (${i + 1}/${files.length})` : ""}…`);
-        // 1. Mint a signed upload URL server-side (brand-access guarded).
+        // 1. Ask the server where to upload (R2 presigned PUT or Supabase signed URL).
         const signRes = await fetch("/api/media/upload-url", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ entity, filename: file.name }),
         });
         const sign = await signRes.json();
-        if (!sign.ok || !sign.path || !sign.token) {
+        if (!sign.ok) {
           setError(sign.error ?? "upload_url_failed");
           break;
         }
-        // 2. Upload the file straight to storage.
-        const { error: upErr } = await supabase.storage
-          .from(MEDIA_BUCKET)
-          .uploadToSignedUrl(sign.path, sign.token, file);
-        if (upErr) {
+        // 2. Upload the bytes straight to storage (never through our server).
+        let upMsg: string | null = null;
+        if (sign.method === "put" && sign.uploadUrl) {
+          const put = await fetch(sign.uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "content-type": file.type || "application/octet-stream" },
+          });
+          if (!put.ok) upMsg = `upload failed (${put.status})`;
+        } else if (sign.path && sign.token) {
+          const { error: upErr } = await supabase.storage
+            .from(MEDIA_BUCKET)
+            .uploadToSignedUrl(sign.path, sign.token, file);
+          if (upErr) upMsg = upErr.message;
+        } else {
+          upMsg = "no_upload_target";
+        }
+        if (upMsg) {
           setError(
-            /maximum allowed size|exceeded|too large|413/i.test(upErr.message)
-              ? `"${file.name}" is ${mb} MB — over the storage upload limit (~50 MB). Trim/compress it, or raise the limit in Supabase → Storage settings.`
-              : upErr.message,
+            /maximum allowed size|exceeded|too large|413/i.test(upMsg)
+              ? `"${file.name}" is ${mb} MB — over the ${limitMb} MB storage limit. Compress it or raise the limit.`
+              : upMsg,
           );
           break;
         }
@@ -141,7 +159,8 @@ export function MediaLibrary({
         {progress && <span className="text-xs text-slate-500">{progress}</span>}
         {!uploading && !loading && (
           <span className="text-xs text-slate-400">
-            {items.length} item{items.length === 1 ? "" : "s"} · max ~50 MB each
+            {items.length} item{items.length === 1 ? "" : "s"} ·{" "}
+            {limitMb >= 1000 ? "large files OK (R2)" : `max ~${limitMb} MB each`}
           </span>
         )}
       </div>
