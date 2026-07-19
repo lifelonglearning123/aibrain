@@ -5,6 +5,25 @@ Append important decisions here so the brain (and future-you) remember *what* wa
 
 ---
 
+## 2026-07-19 — Retargeting → value-led: 30-day campaign, 80% benefit / 20% sales
+
+- **Chao's steer:** the retargeting was "selling, selling, selling." Give the audience benefits, not
+  constant pitches — a **30-day campaign, 80% benefit / 20% sales**, plus a **research knowledge file**.
+- **Deep research first (verified):** ran the `deep-research` skill (6 angles · 24 sources · 107
+  claims · 25 verified → **10 confirmed / 15 refuted**). Wrote `references/ai-voice-benefits.md` — the
+  confirmed stats (speed-to-lead 8×/100×/21×/+391%; 411 Locals 37.8% answered; conversational-AI
+  market growth; SMEs fastest-adopting), each **attributed**, plus a **"do NOT cite"** list of the 15
+  refuted-but-popular stats ($126k/missed-call, 85% won't call back, 80% voicemail hang-up, BT/YouGov,
+  ROI/pricing). `lib/ai/voice-benefits.ts` = machine-usable distillation injected into drafters.
+- **Rebuilt `lib/ai/sequence.ts`:** now a **30-day, 10–12 step** campaign, **strict 80/20** value/sales
+  (`kind: value|sales` per step). Value steps TEACH (attributed facts + real customer language, no ask);
+  2–3 low-pressure value-wrapped sales touches, spaced out. Route injects `VOICE_BENEFITS`; UI shows
+  value/sales badges + ratio.
+- **Verified live (macaws):** 12 steps / **83% value**, correct attribution, real objections handled as
+  helpful value, only 2 gentle sales touches. tsc green.
+- **Pattern:** this is how the installed skills earn their keep in the *automated* app — distil each
+  skill's framework into the drafter prompt. Next candidate: the Social drafter.
+
 ## 2026-07-17 — Social v4: image quality — AI art director + branded graphic cards
 
 - **Chao's diagnosis (asked):** images are generic AI look + off-brand + bad/no text; wants ALL

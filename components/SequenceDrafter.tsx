@@ -6,6 +6,7 @@ import { ENTITIES, type EntityKey } from "@/lib/entities";
 interface Step {
   day: number;
   channel: string;
+  kind?: "value" | "sales";
   subject?: string;
   message: string;
 }
@@ -26,6 +27,9 @@ export function SequenceDrafter({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usedInsights, setUsedInsights] = useState(false);
+
+  const valueCount = steps.filter((s) => s.kind !== "sales").length;
+  const salesCount = steps.length - valueCount;
 
   async function draft() {
     setLoading(true);
@@ -52,11 +56,12 @@ export function SequenceDrafter({
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">
-        Draft a retargeting sequence from what we&apos;ve learned
+        Draft a 30-day, benefit-led retargeting campaign
       </h3>
       <p className="mt-1 text-sm text-slate-500">
-        gpt-5.5 writes a multi-step sequence that handles the real objections from your calls.
-        Review it, then set it up as a goal in Goal Engine.
+        gpt-5.5 writes a 30-day nurture campaign that mostly <strong>gives value</strong> (~80%) and
+        only occasionally sells (~20%), grounded in verified AI-voice benefit facts and your learned
+        insights. Review it, then set it up in Goal Engine.
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -93,16 +98,33 @@ export function SequenceDrafter({
 
       {steps.length > 0 && (
         <div className="mt-4 space-y-2">
-          <p className="text-xs text-slate-400">
-            {usedInsights
-              ? "Grounded in your learned insights."
-              : "No learned insights yet — general best practice used. Run learning in AI Insights to improve this."}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
+              {steps.length} steps over 30 days · {valueCount} value / {salesCount} sales
+              {steps.length ? ` (${Math.round((valueCount / steps.length) * 100)}% value)` : ""}
+            </span>
+            <span>
+              {usedInsights
+                ? "Grounded in your learned insights + verified benefit facts."
+                : "General best practice used — run learning in AI Insights to sharpen this."}
+            </span>
+          </div>
           {steps.map((s, i) => (
             <div key={i} className="rounded-lg border border-slate-100 p-3">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Day {s.day} · {s.channel}
-                {s.subject ? ` · ${s.subject}` : ""}
+              <div className="mb-1 flex items-center gap-2">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                    s.kind === "sales"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-emerald-100 text-emerald-700"
+                  }`}
+                >
+                  {s.kind === "sales" ? "Sales" : "Value"}
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Day {s.day} · {s.channel}
+                  {s.subject ? ` · ${s.subject}` : ""}
+                </span>
               </div>
               <p className="whitespace-pre-wrap text-sm text-slate-700">{s.message}</p>
             </div>

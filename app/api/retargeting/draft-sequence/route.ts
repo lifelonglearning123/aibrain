@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { draftSequence } from "@/lib/ai/sequence";
+import { VOICE_BENEFITS } from "@/lib/ai/voice-benefits";
 import { openaiConfig } from "@/lib/ai/openai";
 import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
 import { getPreferenceGuidance } from "@/lib/preferences";
@@ -48,12 +49,21 @@ export async function POST(req: Request) {
     .join("\n\n");
 
   try {
-    const steps = await draftSequence({ brandName, goal, knowledge, preferences });
+    const steps = await draftSequence({
+      brandName,
+      goal,
+      knowledge,
+      preferences,
+      benefits: VOICE_BENEFITS,
+    });
+    const valueCount = steps.filter((s) => s.kind === "value").length;
     return NextResponse.json({
       ok: true,
       steps,
       usedInsights: knowledge.length > 0,
       usedPreferences: preferences.length > 0,
+      valueCount,
+      salesCount: steps.length - valueCount,
     });
   } catch (e) {
     return NextResponse.json(
