@@ -22,6 +22,7 @@ const SECTIONS: {
       { href: "/dashboard/retargeting", label: "Retargeting" },
       { href: "/dashboard/social", label: "Social" },
       { href: "/dashboard/video", label: "Video" },
+      { href: "/dashboard/media", label: "Media library" },
     ],
   },
   {

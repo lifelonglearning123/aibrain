@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
 import { PLATFORMS } from "@/lib/ai/draft";
 import { BrandVoiceInterview } from "./BrandVoiceInterview";
+import { MediaLibrary } from "./MediaLibrary";
 
 interface Draft {
   platform: string;
@@ -55,6 +56,10 @@ export function SocialComposer({
   const [pubError, setPubError] = useState<string | null>(null);
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // A video/image picked from the shared Media library, attached on publish.
+  const [libMediaUrl, setLibMediaUrl] = useState<string | null>(null);
+  const [libMediaKind, setLibMediaKind] = useState<string>("");
+  const [showLib, setShowLib] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const [aspect, setAspect] = useState("1:1");
@@ -104,6 +109,7 @@ export function SocialComposer({
     setDrafts([]);
     setOriginals([]);
     setImageUrl(null);
+    setLibMediaUrl(null);
     setPubResults([]);
     if (configured) void fetchSuggestions(brand);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,7 +212,8 @@ export function SocialComposer({
         body: JSON.stringify({
           entity: brand,
           posts: drafts,
-          mediaUrls: imageUrl ? [imageUrl] : [],
+          // Attach the generated image and/or a clip picked from the library.
+          mediaUrls: [libMediaUrl, imageUrl].filter(Boolean),
         }),
       });
       const data = await res.json();
@@ -558,7 +565,7 @@ export function SocialComposer({
         {drafts.length > 0 && (
           <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-slate-700">Image (optional)</h4>
+              <h4 className="text-sm font-semibold text-slate-700">Media (optional)</h4>
               <select
                 value={aspect}
                 onChange={(e) => setAspect(e.target.value)}
@@ -570,6 +577,58 @@ export function SocialComposer({
                 <option value="16:9">16:9</option>
               </select>
             </div>
+
+            {/* Attach a video/image you've recorded (from the Media library). */}
+            <div className="rounded-lg border border-slate-200 p-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-600">
+                  {libMediaUrl
+                    ? `Attached: your ${libMediaKind || "media"}`
+                    : "Attach your own video / image"}
+                </span>
+                <div className="flex items-center gap-2">
+                  {libMediaUrl && (
+                    <button
+                      onClick={() => setLibMediaUrl(null)}
+                      className="text-xs text-slate-400 hover:text-red-600"
+                    >
+                      remove
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowLib((v) => !v)}
+                    className="text-xs font-medium text-slate-500 hover:text-slate-900"
+                  >
+                    {showLib ? "Hide library" : "Media library"}
+                  </button>
+                </div>
+              </div>
+              {libMediaUrl && libMediaKind === "video" && (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  src={libMediaUrl}
+                  controls
+                  className="mt-2 w-full max-w-[160px] rounded border border-slate-200"
+                />
+              )}
+              {showLib && (
+                <div className="mt-2">
+                  <MediaLibrary
+                    entity={brand}
+                    compact
+                    accept="video/*,image/*"
+                    selectLabel="Attach"
+                    onSelect={(url, kind) => {
+                      setLibMediaUrl(url);
+                      setLibMediaKind(kind);
+                      setShowLib(false);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-400">Or generate an image:</p>
             <div className="flex flex-wrap gap-1.5">
               {[
                 { key: "auto", label: "✨ Auto" },

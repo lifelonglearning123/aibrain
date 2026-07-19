@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ENTITIES, type EntityKey } from "@/lib/entities";
+import { MediaLibrary } from "./MediaLibrary";
 
 type SceneStatus = "idle" | "generating" | "ready" | "error";
 
@@ -46,6 +47,9 @@ export function VideoComposer({
   // each clip's still is grounded in the post, not a bare scene description.
   const [topic, setTopic] = useState("");
   const [scenes, setScenes] = useState<Scene[]>([]);
+
+  // Pick recorded footage from the shared Media library.
+  const [showLib, setShowLib] = useState(false);
 
   // Storyboard (auto-build scenes) — the length lever.
   const [targetSeconds, setTargetSeconds] = useState(24);
@@ -446,7 +450,7 @@ export function VideoComposer({
       )}
 
       {/* Add scene */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => addScene("ai")}
           className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800"
@@ -457,9 +461,35 @@ export function VideoComposer({
           onClick={() => addScene("user")}
           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
         >
-          + Your clip
+          + Your clip (URL)
+        </button>
+        <button
+          onClick={() => setShowLib((v) => !v)}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          {showLib ? "Hide library" : "+ From your Media library"}
         </button>
       </div>
+
+      {/* Pick recorded footage → adds it as a scene. */}
+      {showLib && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <p className="mb-2 text-xs text-slate-500">
+            Upload or pick a clip you&apos;ve recorded — it&apos;s added as a scene.
+          </p>
+          <MediaLibrary
+            entity={brand}
+            compact
+            selectLabel="Add"
+            onSelect={(url) => {
+              setScenes((prev) => [
+                ...prev,
+                { id: crypto.randomUUID(), source: "user", prompt: "", clipUrl: url, status: "ready" },
+              ]);
+            }}
+          />
+        </div>
+      )}
 
       {/* Voiceover */}
       <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
