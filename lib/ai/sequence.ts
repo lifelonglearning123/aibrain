@@ -29,8 +29,10 @@ export async function draftSequence(params: {
   preferences?: string;
   /** Verified benefit facts to teach with (attributed). */
   benefits?: string;
+  /** A real booking/resource link to use in the sales-step CTAs. */
+  ctaUrl?: string;
 }): Promise<SequenceStep[]> {
-  const { brandName, goal, knowledge, preferences, benefits } = params;
+  const { brandName, goal, knowledge, preferences, benefits, ctaUrl } = params;
 
   const system =
     "You are a senior lifecycle/retention marketer and direct-response copywriter. Design a 30-DAY " +
@@ -54,6 +56,11 @@ export async function draftSequence(params: {
     "specific and concrete, plain human language, one idea per message, active voice. ~70% email, " +
     "occasional SMS. Email subjects: clear, benefit- or curiosity-driven, ~40–60 chars. Follow the " +
     "brand voice and the user's learned style preferences closely.\n\n" +
+    "LINK (strict): when a CTA link is provided below, EVERY sales step (kind:\"sales\") MUST use that " +
+    "exact URL, written in full, as its call-to-action (e.g. 'Book a quick call: <link>'). Do NOT " +
+    "replace the provided link with a 'reply X' CTA. Value steps stay value-first and only include the " +
+    "link if the step genuinely points to a resource there. When NO link is provided, use a soft " +
+    "reply-based CTA and never invent a URL.\n\n" +
     "Return ONLY JSON: " +
     '{"steps":[{"day":0,"channel":"email|sms","kind":"value|sales","subject":"(email only)","message":"..."}]} ' +
     "— 10 to 12 steps over ~30 days, with about 80% kind:value.";
@@ -65,6 +72,7 @@ export async function draftSequence(params: {
   const user =
     `BRAND: ${brandName ?? "the brand"}\n` +
     `CAMPAIGN GOAL (the eventual conversion, reached gently — most steps should NOT push it): ${goal}\n\n` +
+    (ctaUrl ? `CTA LINK (use this exact URL in the sales-step call-to-action): ${ctaUrl}\n\n` : "") +
     (benefits ? `${benefits}\n\n` : "") +
     `WHAT WE'VE LEARNED FROM REAL CUSTOMERS (weave in as value; address objections helpfully):\n${knowledge || "(no learned insights yet — use general best practice)"}\n\n` +
     prefs +

@@ -22,10 +22,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "openai_not_configured" }, { status: 400 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { entity?: string; goal?: string };
+  const body = (await req.json().catch(() => ({}))) as {
+    entity?: string;
+    goal?: string;
+    ctaUrl?: string;
+  };
   const entity = resolveEntity(body.entity);
   const goal = (body.goal ?? "").trim();
   if (!goal) return NextResponse.json({ ok: false, error: "goal_required" }, { status: 400 });
+  const ctaUrl = (body.ctaUrl ?? "").trim();
 
   if (access && entity !== ALL && !access.brands.includes(entity as EntityKey)) {
     return NextResponse.json({ ok: false, error: "forbidden_brand" }, { status: 403 });
@@ -55,6 +60,7 @@ export async function POST(req: Request) {
       knowledge,
       preferences,
       benefits: VOICE_BENEFITS,
+      ctaUrl: ctaUrl || undefined,
     });
     const valueCount = steps.filter((s) => s.kind === "value").length;
     return NextResponse.json({
