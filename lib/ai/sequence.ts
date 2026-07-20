@@ -29,10 +29,12 @@ export async function draftSequence(params: {
   preferences?: string;
   /** Verified benefit facts to teach with (attributed). */
   benefits?: string;
-  /** A real booking/resource link to use in the sales-step CTAs. */
+  /** The booking/conversion link — used as the call-to-action in sales steps. */
   ctaUrl?: string;
+  /** A general website link — added softly to every email step. */
+  websiteUrl?: string;
 }): Promise<SequenceStep[]> {
-  const { brandName, goal, knowledge, preferences, benefits, ctaUrl } = params;
+  const { brandName, goal, knowledge, preferences, benefits, ctaUrl, websiteUrl } = params;
 
   const system =
     "You are a senior lifecycle/retention marketer and direct-response copywriter. Design a 30-DAY " +
@@ -56,11 +58,14 @@ export async function draftSequence(params: {
     "specific and concrete, plain human language, one idea per message, active voice. ~70% email, " +
     "occasional SMS. Email subjects: clear, benefit- or curiosity-driven, ~40–60 chars. Follow the " +
     "brand voice and the user's learned style preferences closely.\n\n" +
-    "LINK (strict): when a CTA link is provided below, EVERY sales step (kind:\"sales\") MUST use that " +
-    "exact URL, written in full, as its call-to-action (e.g. 'Book a quick call: <link>'). Do NOT " +
-    "replace the provided link with a 'reply X' CTA. Value steps stay value-first and only include the " +
-    "link if the step genuinely points to a resource there. When NO link is provided, use a soft " +
-    "reply-based CTA and never invent a URL.\n\n" +
+    "LINKS (follow exactly, and never invent a URL):\n" +
+    "- WEBSITE LINK: when a website URL is provided, add it to EVERY email step as a soft, optional " +
+    "'if you'd like to look, here's our site' reference — a short low-key closing line (e.g. 'More on " +
+    "our site: <website>'). It is for browsing, NOT a push. Do NOT put it in SMS steps (keep those short).\n" +
+    "- CTA LINK: when a booking/CTA link is provided, EVERY sales step (kind:\"sales\", roughly 1 in 5) " +
+    "MUST use that exact URL, written in full, as its main call-to-action (e.g. 'Book a quick call: " +
+    "<cta>'). Value steps do NOT use the CTA link.\n" +
+    "- If a link isn't provided, use a soft reply-based CTA (e.g. \"reply 'audit'\") instead.\n\n" +
     "Return ONLY JSON: " +
     '{"steps":[{"day":0,"channel":"email|sms","kind":"value|sales","subject":"(email only)","message":"..."}]} ' +
     "— 10 to 12 steps over ~30 days, with about 80% kind:value.";
@@ -72,14 +77,21 @@ export async function draftSequence(params: {
   const user =
     `BRAND: ${brandName ?? "the brand"}\n` +
     `CAMPAIGN GOAL (the eventual conversion, reached gently — most steps should NOT push it): ${goal}\n\n` +
-    (ctaUrl ? `CTA LINK (use this exact URL in the sales-step call-to-action): ${ctaUrl}\n\n` : "") +
+    (ctaUrl ? `CTA/BOOKING LINK (sales steps' call-to-action): ${ctaUrl}\n` : "") +
+    (websiteUrl ? `WEBSITE LINK (add softly to every email): ${websiteUrl}\n` : "") +
+    (ctaUrl || websiteUrl ? "\n" : "") +
     (benefits ? `${benefits}\n\n` : "") +
     `WHAT WE'VE LEARNED FROM REAL CUSTOMERS (weave in as value; address objections helpfully):\n${knowledge || "(no learned insights yet — use general best practice)"}\n\n` +
     prefs +
     "Design the 30-day campaign as JSON.";
 
-  const json = (await chatJSON(system, user)) as { steps?: unknown } | null;
-  const steps = json?.steps;
+  // A 30-day campaign is a long output — give it room, and retry once if the
+  // JSON comes back empty/truncated (avoids the occasional blank draft).
+  let steps: unknown;
+  for (let attempt = 0; attempt < 2 && !Array.isArray(steps); attempt++) {
+    const json = (await chatJSON(system, user, 9000)) as { steps?: unknown } | null;
+    steps = json?.steps;
+  }
   if (!Array.isArray(steps)) return [];
   return steps
     .map((s) => {

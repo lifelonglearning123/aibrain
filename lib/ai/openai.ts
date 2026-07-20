@@ -8,8 +8,17 @@ export async function openaiConfig() {
   return { apiKey, model, configured: Boolean(apiKey) };
 }
 
-/** Ask the model for a JSON object. Returns parsed JSON, or null if no key. Throws on API error. */
-export async function chatJSON(system: string, user: string): Promise<unknown | null> {
+/**
+ * Ask the model for a JSON object. Returns parsed JSON, or null if no key.
+ * Throws on API error. `maxTokens` caps the completion — raise it for long
+ * outputs (e.g. a 30-day campaign) so the JSON isn't truncated into garbage.
+ * gpt-5.x is a reasoning model, so reasoning tokens also count against this.
+ */
+export async function chatJSON(
+  system: string,
+  user: string,
+  maxTokens = 3000,
+): Promise<unknown | null> {
   const { apiKey, model } = await openaiConfig();
   if (!apiKey) return null;
 
@@ -27,7 +36,7 @@ export async function chatJSON(system: string, user: string): Promise<unknown | 
       ],
       response_format: { type: "json_object" },
       // gpt-5.x uses max_completion_tokens (not max_tokens)
-      max_completion_tokens: 3000,
+      max_completion_tokens: maxTokens,
     }),
     cache: "no-store",
   });

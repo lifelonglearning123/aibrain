@@ -33,6 +33,7 @@ export function SequenceDrafter({
   const brandOptions = ENTITIES.filter((e) => allowedBrands.includes(e.key));
   const [goal, setGoal] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [steps, setSteps] = useState<Step[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +65,12 @@ export function SequenceDrafter({
       const res = await fetch("/api/retargeting/draft-sequence", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ entity: brand, goal, ctaUrl: ctaUrl || undefined }),
+        body: JSON.stringify({
+          entity: brand,
+          goal,
+          ctaUrl: ctaUrl || undefined,
+          websiteUrl: websiteUrl || undefined,
+        }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -115,12 +121,20 @@ export function SequenceDrafter({
           {loading ? "Drafting…" : "Draft campaign"}
         </button>
       </div>
-      <input
-        value={ctaUrl}
-        onChange={(e) => setCtaUrl(e.target.value)}
-        placeholder="Link / booking URL (optional) — used in the sales-step CTAs, e.g. https://cal.com/you/demo"
-        className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
-      />
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <input
+          value={ctaUrl}
+          onChange={(e) => setCtaUrl(e.target.value)}
+          placeholder="Booking / CTA link — used by the sales steps (1 in 5), e.g. https://cal.com/you/demo"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+        />
+        <input
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
+          placeholder="Website URL — added softly to every email, e.g. https://macaws.ai"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+        />
+      </div>
 
       {!openaiConfigured && (
         <p className="mt-2 text-xs text-amber-600">Add OpenAI to enable drafting.</p>

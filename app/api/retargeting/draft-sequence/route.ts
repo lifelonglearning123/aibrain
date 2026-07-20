@@ -26,11 +26,13 @@ export async function POST(req: Request) {
     entity?: string;
     goal?: string;
     ctaUrl?: string;
+    websiteUrl?: string;
   };
   const entity = resolveEntity(body.entity);
   const goal = (body.goal ?? "").trim();
   if (!goal) return NextResponse.json({ ok: false, error: "goal_required" }, { status: 400 });
   const ctaUrl = (body.ctaUrl ?? "").trim();
+  const websiteUrl = (body.websiteUrl ?? "").trim();
 
   if (access && entity !== ALL && !access.brands.includes(entity as EntityKey)) {
     return NextResponse.json({ ok: false, error: "forbidden_brand" }, { status: 403 });
@@ -61,6 +63,7 @@ export async function POST(req: Request) {
       preferences,
       benefits: VOICE_BENEFITS,
       ctaUrl: ctaUrl || undefined,
+      websiteUrl: websiteUrl || undefined,
     });
     const valueCount = steps.filter((s) => s.kind === "value").length;
     return NextResponse.json({
