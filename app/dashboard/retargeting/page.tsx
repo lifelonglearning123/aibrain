@@ -126,7 +126,11 @@ export default async function RetargetingPage({
         allowedBrands={allowedBrands}
       />
 
-      <EnrollTester configured={configured} />
+      <EnrollTester
+        configured={configured}
+        initialEntity={initialEntity}
+        allowedBrands={allowedBrands}
+      />
 
       <EmptyState source="Campaigns" phase="Next">
         Registered campaigns per brand (with live status and outcomes) land here
