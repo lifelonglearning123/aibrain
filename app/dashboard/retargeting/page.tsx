@@ -1,9 +1,6 @@
 import { ViewHeader } from "@/components/ViewHeader";
-import { EmptyState } from "@/components/EmptyState";
 import { EnrollTester } from "@/components/EnrollTester";
-import { SequenceDrafter } from "@/components/SequenceDrafter";
 import { goalEngineConfig } from "@/lib/integrations/goal-engine";
-import { openaiConfig } from "@/lib/ai/openai";
 import { getFunnelWinners } from "@/lib/ai/funnel-learning";
 import { resolveEntity, ENTITIES, type EntityKey } from "@/lib/entities";
 import { getAccess } from "@/lib/access";
@@ -15,7 +12,6 @@ export default async function RetargetingPage({
 }) {
   const { entity } = await searchParams;
   const { configured, url } = await goalEngineConfig();
-  const openaiReady = (await openaiConfig()).configured;
   const filter = resolveEntity(entity);
   const access = await getAccess();
   const allowedBrands = access.brands;
@@ -24,16 +20,17 @@ export default async function RetargetingPage({
     : allowedBrands[0];
   const winners = await getFunnelWinners(allowedBrands);
   const brandName = (k: string) => ENTITIES.find((e) => e.key === k)?.name ?? k;
+  const adminUrl = url ? `${url.replace(/\/$/, "")}/admin` : null;
 
   return (
     <div className="space-y-6">
       <ViewHeader
         title="Retargeting"
-        subtitle="Powered by your Goal Engine — AI flows into GHL"
+        subtitle="Your Brain feeds Goal Engine what wins — Goal Engine writes &amp; runs the flows"
         entity={entity}
       />
 
-      {/* Connection status */}
+      {/* Connection status + open Goal Engine */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex items-center gap-3">
           <span
@@ -52,37 +49,54 @@ export default async function RetargetingPage({
             </div>
           </div>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-          Linked app · retargeting engine
-        </span>
+        {configured && adminUrl && (
+          <a
+            href={adminUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+          >
+            Open Goal Engine ↗
+          </a>
+        )}
       </div>
 
       {/* How the loop works */}
       <div className="rounded-xl border border-slate-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-slate-700">
-          The learning loop: Brain thinks, Goal Engine acts
+          The learning loop: Brain thinks, Goal Engine writes &amp; acts
         </h3>
         <ul className="mt-2 space-y-1.5 text-sm text-slate-500">
           <li>
             • <strong>Brain → Goal Engine (knowledge):</strong> Goal Engine pulls
-            your learned angles, objections &amp; taught facts from{" "}
-            <code className="rounded bg-slate-100 px-1 text-xs">GET /api/knowledge/&lt;brand&gt;</code>{" "}
-            to ground every sequence in what actually wins deals.
+            your learned angles, objections and taught facts — plus the verified
+            AI-voice benefit facts and the value-led (80/20) steer — from{" "}
+            <code className="rounded bg-slate-100 px-1 text-xs">GET /api/knowledge/&lt;brand&gt;</code>,
+            so it writes flows that are on-brand, fact-backed and give value rather than just sell.
           </li>
           <li>
-            • <strong>Execution:</strong> enrolling a contact starts its
-            multi-channel flow (SMS · email · WhatsApp) into GHL. The Brain
-            triggers Goal Engine but never edits it, so improving one can&apos;t
-            break the other.
+            • <strong>Goal Engine writes &amp; runs the flows:</strong> it plans
+            the multi-channel sequence (SMS · email · WhatsApp) and executes it into
+            GHL. You author and manage flows there — the Brain doesn&apos;t
+            duplicate that.
           </li>
           <li>
-            • <strong>Goal Engine → Brain (learning):</strong> outcomes are
-            reported to{" "}
+            • <strong>Goal Engine → Brain (learning):</strong> outcomes are reported
+            to{" "}
             <code className="rounded bg-slate-100 px-1 text-xs">POST /api/retargeting/outcome</code>.
-            Angles that repeatedly convert become <em>winning angles</em> that
-            feed the next draft — the funnel improves itself.
+            Angles that repeatedly convert become <em>winning angles</em> that lead
+            the next knowledge pull — the funnel improves itself.
           </li>
         </ul>
+        {adminUrl && (
+          <p className="mt-3 text-xs text-slate-400">
+            Manage and edit your flows in{" "}
+            <a href={adminUrl} target="_blank" rel="noreferrer" className="font-medium text-slate-600 underline">
+              Goal Engine
+            </a>
+            . The Brain&apos;s job is the knowledge + enrolment below.
+          </p>
+        )}
       </div>
 
       {/* What the funnel has learned */}
@@ -98,8 +112,8 @@ export default async function RetargetingPage({
         {winners.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">
             No proven angles yet. Once Goal Engine reports outcomes, angles that
-            convert (≥3 reports, ≥50% win rate) are promoted here and start
-            leading your drafts automatically.
+            convert (≥3 reports, ≥50% win rate) are promoted here and start leading
+            the knowledge Goal Engine pulls.
           </p>
         ) : (
           <ul className="mt-3 space-y-1.5 text-sm">
@@ -120,23 +134,11 @@ export default async function RetargetingPage({
         )}
       </div>
 
-      <SequenceDrafter
-        openaiConfigured={openaiReady}
-        initialEntity={initialEntity}
-        allowedBrands={allowedBrands}
-      />
-
       <EnrollTester
         configured={configured}
         initialEntity={initialEntity}
         allowedBrands={allowedBrands}
       />
-
-      <EmptyState source="Campaigns" phase="Next">
-        Registered campaigns per brand (with live status and outcomes) land here
-        once we connect the Brain&apos;s database and Goal Engine&apos;s read
-        feed. For now, the tester above proves the launch path works.
-      </EmptyState>
     </div>
   );
 }

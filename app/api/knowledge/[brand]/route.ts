@@ -4,6 +4,7 @@ import { getBrandKnowledge, knowledgePrompt } from "@/lib/knowledge";
 import { getPreferenceGuidance } from "@/lib/preferences";
 import { getTaughtFacts } from "@/lib/ai/brain-facts";
 import { getBrandProfile, profilePrompt, voiceBlock } from "@/lib/brand-profile";
+import { VOICE_BENEFITS, VALUE_LED_GUIDANCE } from "@/lib/ai/voice-benefits";
 import { resolveEntity, ALL, ENTITIES, type EntityKey } from "@/lib/entities";
 
 export const dynamic = "force-dynamic";
@@ -34,13 +35,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ brand: string }
     getBrandProfile(key),
   ]);
 
-  // Business context first (what the business is), then winning angles, voice + rules.
+  // Business context first (what the business is), then winning angles, voice +
+  // rules, the verified benefit facts, and the value-led writing steer — so
+  // Goal Engine's own flows are grounded AND value-led (not salesy).
   const promptBlock = [
     profilePrompt(profile, name),
     knowledgePrompt(k),
     voiceBlock(profile),
     facts.length ? `Rules to always follow: ${facts.map((f) => f.text).join(" | ")}` : "",
     prefs ? `Preferred writing style: ${prefs}` : "",
+    VOICE_BENEFITS,
+    VALUE_LED_GUIDANCE,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -55,6 +60,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ brand: string }
     faqs: k.faqs,
     taughtFacts: facts.map((f) => f.text),
     stylePreferences: prefs || null,
+    // The verified benefit facts + value-led steer, also exposed structured.
+    verifiedBenefits: VOICE_BENEFITS,
+    writingGuidance: VALUE_LED_GUIDANCE,
     // A ready-to-use context block Goal Engine can drop into its planner prompt.
     promptBlock,
     generatedAt: new Date().toISOString(),

@@ -5,6 +5,23 @@ Append important decisions here so the brain (and future-you) remember *what* wa
 
 ---
 
+## 2026-07-22 — Retargeting split: Brain = cockpit, Goal Engine authors (kill the duplicate)
+
+- **Chao's insight:** the Brain drafting a campaign you copy-paste into Goal Engine is redundant —
+  Goal Engine already pulls the Brain's knowledge and plans its own flows. Chose **Option A**: Brain
+  is the knowledge/funnel source + enrol trigger + cockpit; Goal Engine authors + runs.
+- **Built:** (1) enriched the knowledge pull (`/api/knowledge/<brand>`) — its `promptBlock` now also
+  carries `VOICE_BENEFITS` (verified facts) + new `VALUE_LED_GUIDANCE` (80/20 teach-don't-sell), plus
+  structured `verifiedBenefits`/`writingGuidance` fields, so Goal Engine's OWN flows go value-led and
+  fact-backed. Verified live: promptBlock 10,471 → 12,471 chars, includes InsideSales + value-led steer.
+  (2) Slimmed the Retargeting page to a cockpit: connection status + "Open Goal Engine ↗" deep-link
+  (`<url>/admin`) + the loop explainer + funnel winners + the enrol tester (with the goal dropdown).
+  (3) **Retired the copy-paste drafter** — deleted `SequenceDrafter.tsx`, `lib/ai/sequence.ts`,
+  `/api/retargeting/draft-sequence`. Social keeps its own value-led drafter (that publishes directly).
+- **Net:** one authoring surface (Goal Engine), fed by the Brain's value-led knowledge. No duplication.
+- **To take effect for Goal Engine:** the Brain must be deployed (aibrain.macaws.ai) so the enriched
+  pull is live.
+
 ## 2026-07-19 — Retargeting → value-led: 30-day campaign, 80% benefit / 20% sales
 
 - **Chao's steer:** the retargeting was "selling, selling, selling." Give the audience benefits, not

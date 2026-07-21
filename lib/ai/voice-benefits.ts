@@ -11,3 +11,9 @@ export const VOICE_BENEFITS = `VERIFIED FACTS ABOUT AI VOICE RECEPTIONISTS (use 
 - The trend is real and early: the conversational AI market is ~$11.58B (2024) growing to ~$41.39B by 2030 at 23.7% CAGR (Grand View Research); the Intelligent Virtual Assistant segment is the fastest-growing type at 24.4% CAGR; SMEs are the fastest-growing adopters (~24.6% CAGR, Mordor Intelligence).
 
 RULES: Teach the benefit first, use the stat as proof, attribute it (e.g. "according to MIT/InsideSales research"). NEVER cite: revenue-per-missed-call ($126k), "85% won't call back", "80% hang up on voicemail", after-hours %, ROI-vs-human or pricing figures, or UK-specific missed-call stats — those failed verification. Prefer the brand's OWN client results when available.`;
+
+/**
+ * The value-led (not salesy) writing steer, shared by the drafters and handed to
+ * Goal Engine via the knowledge API so its flows are value-led too.
+ */
+export const VALUE_LED_GUIDANCE = `HOW TO WRITE (value-led, not salesy): aim for roughly 80% of messages to GIVE value — teach ONE useful idea, tip or benefit the reader gains just by reading, backed by the verified facts above and the customer's own words, with NO ask (a soft one-line P.S. at most). Only about 20% should be a clear, low-pressure, value-wrapped offer (e.g. a free audit or a demo); space those out. Lead with the reader's benefit, not features. Attribute every statistic to its named source, and never use a figure marked as not-to-cite.`;
