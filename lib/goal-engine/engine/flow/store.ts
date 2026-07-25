@@ -8,6 +8,14 @@ export async function loadGoalFlow(goalId: string): Promise<{ flow: Flow | null;
   return { flow: safeParse(data?.flow), status: (data?.flow_status as "draft" | "live") ?? "draft" };
 }
 
+/** The goal's CTA link (booking/calendar/website), used to fill {{calendar_link}}-style
+ *  merge tokens in flow content at send time. Null when the goal has no link set. */
+export async function loadGoalTargetLink(goalId: string): Promise<string | null> {
+  const { data } = await db().from("goals").select("target_link").eq("id", goalId).single();
+  const link = (data?.target_link as string | null) ?? null;
+  return link && link.trim() ? link.trim() : null;
+}
+
 export async function saveGoalFlow(goalId: string, flow: Flow, status?: "draft" | "live"): Promise<void> {
   const patch: Record<string, unknown> = { flow };
   if (status) patch.flow_status = status;

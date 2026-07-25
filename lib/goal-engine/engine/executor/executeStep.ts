@@ -5,6 +5,7 @@ import { clampToQuietHours, isWithinQuietHours } from "@/lib/goal-engine/engine/
 import { resolveLeadTimezone } from "@/lib/goal-engine/engine/timezone";
 import type { FlowStep } from "@/lib/goal-engine/engine/flow/schema";
 import { personalizeStep } from "@/lib/goal-engine/engine/flow/draft";
+import { loadGoalTargetLink } from "@/lib/goal-engine/engine/flow/store";
 import {
   campaignStatus, hasOpened, hasReplied, loadCampaign, meter, recordStepExecution, setCurrentStep,
 } from "@/lib/goal-engine/engine/executor/state";
@@ -97,10 +98,17 @@ export async function executeStep(
   const contactLabel = [contact.firstName, contact.lastName].filter(Boolean).join(" ")
     || contact.phone || contact.email || campaign.ghl_contact_id;
 
-  const vars = {
+  // The goal's CTA link fills {{calendar_link}}-style tokens the flow content uses.
+  const targetLink = (await loadGoalTargetLink(campaign.goal_id)) ?? "";
+  const vars: Record<string, string> = {
     first_name: contact.firstName ?? "",
     last_name: contact.lastName ?? "",
     full_name: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
+    calendar_link: targetLink,
+    booking_link: targetLink,
+    cta_link: targetLink,
+    link: targetLink,
+    url: targetLink,
   };
 
   // Quiet-hours guard in the lead's timezone.
@@ -192,7 +200,9 @@ export async function executeStep(
     try {
       const history = await getConversationHistory(ctx, campaign.ghl_contact_id).catch(() => []);
       const drafted = await personalizeStep({
-        step,
+        // Give the drafter the brief with merge vars already resolved (real URL,
+        // not {{calendar_link}}) so its "preserve links exactly" rule keeps it.
+        step: { ...step, content: message, subject },
         contact: { firstName: contact.firstName, lastName: contact.lastName, tags: contact.tags },
         history,
         businessProfile: loc?.business_profile,
