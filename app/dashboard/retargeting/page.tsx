@@ -164,9 +164,13 @@ export default async function RetargetingPage({
             <ul className="mt-3 divide-y divide-slate-100">
               {goals.map((g) => (
                 <li key={g.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="min-w-0 flex-1 truncate text-slate-700" title={g.prompt}>
+                  <a
+                    href={`/dashboard/goals/${g.id}?entity=${initialEntity}`}
+                    className="min-w-0 flex-1 truncate text-slate-700 hover:text-slate-900 hover:underline"
+                    title={g.prompt}
+                  >
                     {g.prompt || "(untitled goal)"}
-                  </span>
+                  </a>
                   <span className="shrink-0 text-xs text-slate-500">
                     {g.running > 0 && (
                       <span className="mr-2 rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700">

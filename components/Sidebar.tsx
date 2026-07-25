@@ -20,6 +20,7 @@ const SECTIONS: {
     title: "Do",
     items: [
       { href: "/dashboard/retargeting", label: "Retargeting" },
+      { href: "/dashboard/goals", label: "Goals & campaigns" },
       { href: "/dashboard/social", label: "Social" },
       { href: "/dashboard/video", label: "Video" },
       { href: "/dashboard/media", label: "Media library" },
