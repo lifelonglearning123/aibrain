@@ -12,13 +12,17 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
     "aws4fetch": "^1.0.20",
+    "libphonenumber-js": "^1.13.9",
+    "luxon": "^3.7.2",
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "stripe": "^22.3.0"
+    "stripe": "^22.3.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/luxon": "^3.7.2",
     "@types/node": "^22.10.7",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
