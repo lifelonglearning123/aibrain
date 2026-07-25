@@ -44,10 +44,11 @@ GOAL_ENGINE_EXECUTE = true      # off/absent = shadow, true = live
 2. **Turn OFF Goal Engine's own crons** — in the old `Lead generator` deploy,
    remove the three crons from its `vercel.json` (or pause/delete that Vercel
    project's cron schedules). This is what prevents double-sends.
-3. **Repoint GHL inbound webhooks** from the old Goal Engine URL to the Brain.
-   The webhook handler must exist in the Brain first (`/api/webhooks/ghl` —
-   port from Goal Engine; not yet ported as of Phase 4). Until then, replies/opens
-   still land at the old deploy.
+3. **Repoint GHL inbound webhooks** from the old Goal Engine URL to the Brain's
+   `/api/webhooks/ghl`. The handler is ported and honors the same shadow gate: it
+   records every delivery (idempotent on `external_id`) but takes no action until
+   `GOAL_ENGINE_EXECUTE=true`. A brief overlap with the old deploy dedupes safely
+   via the shared `webhook_events` table.
 4. **Flip the switch:** set `GOAL_ENGINE_EXECUTE=true` in the Brain's Vercel env
    and redeploy.
 5. **Watch the first ticks** in Vercel logs (`LIVE: processed N`) and in the
@@ -62,12 +63,14 @@ migration, no reconciliation.
 
 ## Still to port before full cutover (tracked)
 
-- `/api/webhooks/ghl` — inbound reply/open/opt-out handling (drives `no_reply` /
-  `opened` conditions and opt-outs). **Required for step 3.**
+- ~~`/api/webhooks/ghl` — inbound reply/open/opt-out handling.~~ **Ported** (shadow-gated).
 - `/api/enroll/[goalId]`, `/api/convert/[goalId]` — external enrol/convert hooks,
   if anything calls the old deploy's versions directly.
 - Interactive create/edit of goals + flows in the Brain (currently read-only
   native views; authoring still happens in the Goal Engine admin).
+- **Optional hardening:** webhook signature verification (`GHL_WEBHOOK_SECRET` /
+  the ported `standard-webhooks` helper) — the live Goal Engine left this as a
+  TODO; the Brain keeps parity. Worth wiring before the endpoint is public.
 
 ## Secrets moved into the Brain (Phase 4)
 
