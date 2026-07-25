@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/learn", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/loom-recaps", "schedule": "0 4 * * 1" }
+    { "path": "/api/cron/loom-recaps", "schedule": "0 4 * * 1" },
+    { "path": "/api/goal-engine/tick", "schedule": "0 2 * * *" }
   ]
 }

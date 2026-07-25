@@ -1,5 +1,5 @@
 import { db } from "@/lib/goal-engine/engine/db/server";
-import { executeStep } from "@/lib/goal-engine/engine/executor/executeStep";
+import { executeStep, type StepPreview } from "@/lib/goal-engine/engine/executor/executeStep";
 import { scheduleStep } from "@/lib/goal-engine/engine/executor/schedule";
 import { loadCampaign, setCampaignStatus } from "@/lib/goal-engine/engine/executor/state";
 import { loadGoalFlow } from "@/lib/goal-engine/engine/flow/store";
@@ -10,8 +10,27 @@ import { loadGoalFlow } from "@/lib/goal-engine/engine/flow/store";
  *   2. run each via the engine-agnostic executeStep,
  *   3. schedule the next step (or halt).
  * The claim (update ... where claimed_at is null) makes concurrent ticks safe.
+ *
+ * SHADOW MODE (Phase 4 merge): pass `{ dryRun: true }` and the tick reads the
+ * due queue but claims NOTHING, sends NOTHING and writes NOTHING — it just
+ * asks executeStep what it WOULD do for each due step and returns those
+ * previews. That makes it safe to run alongside the live Goal Engine (which
+ * still owns the queue) so we can prove parity before flipping the Brain live.
  */
-export async function runDueSteps(limit = 50): Promise<{ processed: number }> {
+export interface TickOptions {
+  dryRun?: boolean;
+  limit?: number;
+}
+
+export interface TickResult {
+  processed: number;
+  dryRun: boolean;
+  previews?: StepPreview[];
+}
+
+export async function runDueSteps(arg: number | TickOptions = 50): Promise<TickResult> {
+  const opts: TickOptions = typeof arg === "number" ? { limit: arg } : arg;
+  const { dryRun = false, limit = 50 } = opts;
   const nowIso = new Date().toISOString();
 
   const { data: due } = await db()
@@ -23,6 +42,31 @@ export async function runDueSteps(limit = 50): Promise<{ processed: number }> {
     .order("due_at", { ascending: true })
     .limit(limit);
 
+  // ---- Shadow: simulate every due step, mutate nothing. ----
+  if (dryRun) {
+    const previews: StepPreview[] = [];
+    for (const row of due ?? []) {
+      const campaign = await loadCampaign(row.campaign_id);
+      if (!campaign) continue;
+      const { flow } = await loadGoalFlow(campaign.goal_id);
+      const step = (flow?.steps ?? [])[row.step_index];
+      if (!step) {
+        previews.push({ campaignId: campaign.id, stepIndex: row.step_index, channel: "?", decision: "would_halt", reason: "no_such_step" });
+        continue;
+      }
+      try {
+        await executeStep(campaign.id, step, row.step_index, {
+          dryRun: true,
+          onPreview: (p) => previews.push(p),
+        });
+      } catch (err) {
+        previews.push({ campaignId: campaign.id, stepIndex: row.step_index, channel: step.channel, decision: "would_halt", reason: `error:${(err as Error).message}` });
+      }
+    }
+    return { processed: previews.length, dryRun: true, previews };
+  }
+
+  // ---- Live: claim, execute, schedule the next step (or halt). ----
   let processed = 0;
   for (const row of due ?? []) {
     // Claim atomically — skip if another tick got here first.
@@ -79,7 +123,7 @@ export async function runDueSteps(limit = 50): Promise<{ processed: number }> {
     }
   }
 
-  return { processed };
+  return { processed, dryRun: false };
 }
 
 async function markDone(id: string): Promise<void> {

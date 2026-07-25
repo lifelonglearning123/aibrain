@@ -25,16 +25,34 @@ export interface LocationRow {
   retell_from_number: string | null;
 }
 
+const LOCATION_BASE_COLS =
+  "id, tenant_id, ghl_location_id, auth_type, encrypted_token, timezone, quiet_start, quiet_end, active_channels, business_profile, voice_consent_field";
+const LOCATION_VOICE_COLS = ", retell_voicemail_agent_id, retell_from_number";
+
 export async function loadLocation(locationId: string): Promise<LocationRow | null> {
-  const { data, error } = await db()
+  // Try with the voicemail columns; the live DB may not have them yet (they were
+  // added to the code ahead of the migration). On that schema-drift error, fall
+  // back to the base columns — voicemail stays unconfigured, which executeStep
+  // already handles by advancing past voicemail steps.
+  let { data, error } = await db()
     .from("locations")
-    .select(
-      "id, tenant_id, ghl_location_id, auth_type, encrypted_token, timezone, quiet_start, quiet_end, active_channels, business_profile, voice_consent_field, retell_voicemail_agent_id, retell_from_number"
-    )
+    .select(LOCATION_BASE_COLS + LOCATION_VOICE_COLS)
     .eq("id", locationId)
     .single();
-  if (error) return null;
-  return data as LocationRow;
+  if (error) {
+    ({ data, error } = await db()
+      .from("locations")
+      .select(LOCATION_BASE_COLS)
+      .eq("id", locationId)
+      .single());
+    if (error) return null;
+  }
+  const row = data as Partial<LocationRow>;
+  return {
+    ...(row as LocationRow),
+    retell_voicemail_agent_id: row.retell_voicemail_agent_id ?? null,
+    retell_from_number: row.retell_from_number ?? null,
+  };
 }
 
 /** Resolve the API context (token + ghl_location_id) for a location. */

@@ -33,9 +33,13 @@ export function resolveLeadTimezone(opts: {
   if (opts.ghlTimezone && isValidIanaTz(opts.ghlTimezone)) return opts.ghlTimezone;
 
   if (opts.phoneE164) {
-    const parsed = parsePhoneNumberFromString(opts.phoneE164);
-    const country = parsed?.country;
-    if (country && COUNTRY_FALLBACK_TZ[country]) return COUNTRY_FALLBACK_TZ[country];
+    try {
+      const parsed = parsePhoneNumberFromString(opts.phoneE164);
+      const country = parsed?.country;
+      if (country && COUNTRY_FALLBACK_TZ[country]) return COUNTRY_FALLBACK_TZ[country];
+    } catch {
+      /* phone parse is a best-effort tz hint — never let it break the step */
+    }
   }
 
   return opts.agencyTimezone ?? DEFAULT_TZ;

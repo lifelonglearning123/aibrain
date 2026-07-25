@@ -35,6 +35,17 @@ export default async function GoalsPage({
         entity={entity}
       />
 
+      {access.isOwner && (
+        <div className="flex justify-end">
+          <Link
+            href="/dashboard/goals/execution"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            Execution (shadow) →
+          </Link>
+        </div>
+      )}
+
       {!ready ? (
         <p className="text-sm text-slate-500">Goal Engine database not connected.</p>
       ) : goals.length === 0 ? (

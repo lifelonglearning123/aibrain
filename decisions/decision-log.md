@@ -5,6 +5,40 @@ Append important decisions here so the brain (and future-you) remember *what* wa
 
 ---
 
+## 2026-07-25 — Goal Engine merge Phase 4: Brain runs execution (shadow mode) + found the live send bug
+
+- **Goal:** let the Brain actually RUN the retargeting execution (the crons that send), gated safe
+  in **shadow** first — computes what it would send, sends nothing — before the cutover flip.
+- **Built:**
+  - **Shadow mode in the real executor.** `executeStep` + `runDueSteps` (the ported Goal Engine tick)
+    now take `{ dryRun }`: they make every real decision (status, if-conditions, quiet-hours, message
+    composition incl. AI personalization) but **claim nothing, send nothing, write nothing** — so the
+    Brain can shadow the live Goal Engine without touching a row. Live behavior unchanged when off.
+  - **One switch:** `lib/goal-engine/execution.ts` — `GOAL_ENGINE_EXECUTE` (off = shadow, `true` = live);
+    `checkCronSecret` fails closed. Routes `/api/goal-engine/{tick,enroll-tick,reengage-tick}` (cron-guarded).
+    `tick` shadows by default; `?mode=shadow` can force shadow but there's deliberately no `?mode=live`
+    (going live requires the env flag, so no URL can cause a send). enroll/reengage are no-ops until the flip.
+  - **Execution page** (`/dashboard/goals/execution`, owner-only): SHADOW/LIVE banner, readiness stats,
+    live-GE 24h activity, "what it would send next" sampled from real running campaigns, and the due-now queue.
+  - **Secrets moved** GE → Brain `.env.local` (git-ignored, values unchanged): `APP_ENCRYPTION_KEY`,
+    `CRON_SECRET`, `LLM_*`+`OPENROUTER_API_KEY`, `SUPABASE_VAULT_ENABLED`, `BRAIN_*`, etc.
+  - **Runbook:** `references/goal-engine-cutover.md` — the one-flip cutover + rollback (shared DB = no migration).
+- **MAJOR FINDING (shadow uncovered it):** the live Goal Engine appears to **not have been sending**.
+  Evidence: `step_executions` empty all-time, 0 sends/24h, all 733 scheduled steps burned to `done` with
+  none pending, 255 campaigns stuck "running". Root cause: `loadLocation` selected
+  `retell_voicemail_agent_id`/`retell_from_number` which **don't exist** in the live `locations` table
+  (code ahead of the DB) → query errors → `resolveLocationCtx` throws → the tick's `catch` silently
+  marks steps done without sending. Also `resolveLeadTimezone` could throw on a libphonenumber-js metadata
+  quirk. **Fixed both** in the ported engine (defensive location select w/ fallback; phone-parse wrapped) —
+  the merged Brain carries the corrected code that actually sends.
+- **Verified (read-only, real data):** shadow resolves the location, decrypts the GHL token, reads real
+  contacts and composes real personalized SMS (Ciaran/Jordana/Tarun, step 4) — **sending/writing nothing**.
+  tsc green; `.env.local` git-ignored.
+- **Content nit noticed:** composed SMS ends "Calendar: " (empty) — the CTA/calendar merge var isn't
+  populated in the flow; worth fixing in the flow content, not a shadow issue.
+- **Next (Phase 5, cutover — Chao's hands + Vercel Pro):** port `/api/webhooks/ghl` into the Brain,
+  repoint GHL webhooks, add the per-minute crons, turn OFF Goal Engine's crons, set `GOAL_ENGINE_EXECUTE=true`.
+
 ## 2026-07-22 — Retargeting split: Brain = cockpit, Goal Engine authors (kill the duplicate)
 
 - **Chao's insight:** the Brain drafting a campaign you copy-paste into Goal Engine is redundant —
